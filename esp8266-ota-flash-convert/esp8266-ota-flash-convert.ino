@@ -33,6 +33,8 @@ uint32_t address;
 char bufferx[50];
 uint32_t buffer4;
 
+uint8_t userspace = system_upgrade_userbin_check();
+
 void handleRoot() {
   String response = "";
   response += VERSION;
@@ -96,7 +98,6 @@ void handleRoot() {
   response += ESP.getFlashChipMode();
 
   response += "\nsystem_upgrade_userbin_check: ";
-  uint8_t userspace = system_upgrade_userbin_check();
   if (userspace == 0)
     response += "user1 0x01000";
   else if(userspace == 1)
@@ -122,14 +123,13 @@ void handleFlashsize(){
 
 void handleFlash2(){
   String message = "";
-  uint8_t userBin = system_upgrade_userbin_check();
-  if (userBin == 1)
+  if (userspace == 1)
   {
     message += "Device is already booting from userspace 2 (0x81000)\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userBin == 0)
+  if (userspace == 0)
   {
     message += "Device should flash ";
     message += URL_ROM_2;
@@ -141,14 +141,13 @@ void handleFlash2(){
 
 void handleFlash2URL(){
   String message = "";
-  uint8_t userBin = system_upgrade_userbin_check();
-  if (userBin == 1)
+  if (userspace == 1)
   {
     message += "Device is already booting from userspace 2 (0x81000)\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userBin == 0)
+  if (userspace == 0)
   {
     if (server.argName(0)=="url") {
       sprintf(bufferx,"URL = %s\n",server.arg(0).c_str());
@@ -164,9 +163,8 @@ void handleFlash2URL(){
 }
 
 void handleUndo(){
-  uint8_t userBin = system_upgrade_userbin_check();
   String message = "Rebooting into userspace ";
-  message += userBin ? "1" : "2";
+  message += userspace ? "1" : "2";
   message += "\n";
   server.send(200, "text/plain", message);
 
@@ -176,14 +174,13 @@ void handleUndo(){
 
 void handleFlashURL(){
   String message = "";
-  uint8_t userBin = system_upgrade_userbin_check();
-  if (userBin == 0)
+  if (userspace == 0)
   {
     message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userBin == 1)
+  if (userspace == 1)
   {
     if (server.argName(0)=="url") {
       message += "Device should flash ";
@@ -211,14 +208,13 @@ void handleFlashURL(){
 
 void handleFlash3(){
   String message = "";
-  uint8_t userBin = system_upgrade_userbin_check();
-  if (userBin == 0)
+  if (userspace == 0)
   {
     message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userBin == 1)
+  if (userspace == 1)
   {
     message += "Device should flash ";
     message += URL_ROM_3;
