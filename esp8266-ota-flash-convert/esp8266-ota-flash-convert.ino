@@ -135,7 +135,7 @@ void handleFlash2(){
     message += URL_ROM_2;
     message += " to userspace 0x81000 and restart\n";
     server.send(200, "text/plain", message);
-    flashRom2();
+    flashRom2(URL_ROM_2);
   }
 }
 
@@ -182,19 +182,7 @@ void handleFlashURL(){
       message += bufferx;
       message += " and restart\n";
       server.send(200, "text/plain", message);
-      bool result = downloadRomToFlash(
-        1,                //Rom 1
-        true,             //Bootloader is being updated
-        0xE9,             //Standard Arduino Magic
-        0x00000,          //Write to 0x0 since we are replacing the bootloader
-        0x80000,          //Stop before 0x80000
-        0,                //Erase Sector from 0 to
-        128,              //Sector 128 (not inclusive)
-        server.arg(0).c_str(),
-        RETRY             //Retry Count
-      );
-
-      ESP.restart(); //restart regardless of success
+      flashRom1(server.arg(0).c_str());
     }
   }
   else
@@ -214,7 +202,7 @@ void handleFlash3(){
     message += URL_ROM_3;
     message += " and restart\n";
     server.send(200, "text/plain", message);
-    flashRom1();
+    flashRom1(URL_ROM_3);
   }
   else
   {
@@ -316,7 +304,7 @@ void connectToWiFiBlocking()
 
 
 
-void flashRom1()
+void flashRom1(const char * url)
 {
   bool result = downloadRomToFlash(
     1,                //Rom 1
@@ -326,7 +314,7 @@ void flashRom1()
     0x80000,          //Stop before 0x80000
     0,                //Erase Sector from 0 to
     128,              //Sector 128 (not inclusive)
-    URL_ROM_3,
+    url,              //URL
     RETRY             //Retry Count
   );
 
@@ -334,7 +322,7 @@ void flashRom1()
 }
 
 //Download special rom.
-void flashRom2()
+void flashRom2(const char * url)
 {
   system_upgrade_flag_set(UPGRADE_FLAG_START);
   bool result = downloadRomToFlash(
@@ -345,7 +333,7 @@ void flashRom2()
     0x100000,         //Stop before end of ram
     128,              //From middle of flash
     256,              //End of flash
-    URL_ROM_2,         //URL
+    url,              //URL
     RETRY             //Retry Count
   );
   
