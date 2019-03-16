@@ -125,7 +125,7 @@ void handleFlash2(){
   uint8_t userBin = system_upgrade_userbin_check();
   if (userBin == 1)
   {
-    message += "Device is allready booting from userspace 2 (0x81000)";
+    message += "Device is already booting from userspace 2 (0x81000)\n";
     server.send(200, "text/plain", message);
     return;
   }
@@ -133,7 +133,7 @@ void handleFlash2(){
   {
     message += "Device should flash ";
     message += URL_ROM_2;
-    message += "to userspace 0x81000 and restart";
+    message += " to userspace 0x81000 and restart\n";
     server.send(200, "text/plain", message);
     flashRom2();
   }
@@ -144,7 +144,7 @@ void handleFlash2URL(){
   uint8_t userBin = system_upgrade_userbin_check();
   if (userBin == 1)
   {
-    message += "Device is allready booting from userspace 2 (0x81000)";
+    message += "Device is already booting from userspace 2 (0x81000)\n";
     server.send(200, "text/plain", message);
     return;
   }
@@ -167,6 +167,7 @@ void handleUndo(){
   uint8_t userBin = system_upgrade_userbin_check();
   String message = "Rebooting into userspace ";
   message += userBin ? "1" : "2";
+  message += "\n";
   server.send(200, "text/plain", message);
 
   system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
@@ -178,7 +179,7 @@ void handleFlashURL(){
   uint8_t userBin = system_upgrade_userbin_check();
   if (userBin == 0)
   {
-    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!";
+    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
     server.send(200, "text/plain", message);
     return;
   }
@@ -213,7 +214,7 @@ void handleFlash3(){
   uint8_t userBin = system_upgrade_userbin_check();
   if (userBin == 0)
   {
-    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!";
+    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
     server.send(200, "text/plain", message);
     return;
   }
@@ -221,7 +222,7 @@ void handleFlash3(){
   {
     message += "Device should flash ";
     message += URL_ROM_3;
-    message += " and restart";
+    message += " and restart\n";
     server.send(200, "text/plain", message);
     flashRom1();
   }
