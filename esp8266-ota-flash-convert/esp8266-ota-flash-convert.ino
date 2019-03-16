@@ -123,13 +123,13 @@ void handleFlashsize(){
 
 void handleFlash2(){
   String message = "";
-  if (userspace == 1)
+  if (userspace)
   {
     message += "Device is already booting from userspace 2 (0x81000)\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userspace == 0)
+  else
   {
     message += "Device should flash ";
     message += URL_ROM_2;
@@ -141,13 +141,13 @@ void handleFlash2(){
 
 void handleFlash2URL(){
   String message = "";
-  if (userspace == 1)
+  if (userspace)
   {
     message += "Device is already booting from userspace 2 (0x81000)\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userspace == 0)
+  else
   {
     if (server.argName(0)=="url") {
       sprintf(bufferx,"URL = %s\n",server.arg(0).c_str());
@@ -174,13 +174,7 @@ void handleUndo(){
 
 void handleFlashURL(){
   String message = "";
-  if (userspace == 0)
-  {
-    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
-    server.send(200, "text/plain", message);
-    return;
-  }
-  if (userspace == 1)
+  if (userspace)
   {
     if (server.argName(0)=="url") {
       message += "Device should flash ";
@@ -203,24 +197,30 @@ void handleFlashURL(){
       ESP.restart(); //restart regardless of success
     }
   }
-}
-
-
-void handleFlash3(){
-  String message = "";
-  if (userspace == 0)
+  else
   {
     message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
     server.send(200, "text/plain", message);
     return;
   }
-  if (userspace == 1)
+}
+
+
+void handleFlash3(){
+  String message = "";
+  if (userspace)
   {
     message += "Device should flash ";
     message += URL_ROM_3;
     message += " and restart\n";
     server.send(200, "text/plain", message);
     flashRom1();
+  }
+  else
+  {
+    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
+    server.send(200, "text/plain", message);
+    return;
   }
 }
 
