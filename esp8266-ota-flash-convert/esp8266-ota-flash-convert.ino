@@ -36,8 +36,7 @@ uint32_t buffer4;
 uint8_t userspace = system_upgrade_userbin_check();
 
 void handleRoot() {
-  String response = "";
-  response += VERSION;
+  String response = VERSION;
   response += "\nREAD FLASH: http://";
   response += WiFi.localIP().toString();
   WiFi.printDiag(Serial);
@@ -45,10 +44,12 @@ void handleRoot() {
 
   response += "ChipID: " ;
   response += String(ESP.getChipId(),HEX);
-  response += "";
 
   response += "\nMAC: ";
   response += WiFi.macAddress();
+
+  response += "\nCoreVersion: ";
+  response += ESP.getCoreVersion();
 
   response += "\nSdkVersion: ";
   response += ESP.getSdkVersion();
@@ -62,40 +63,38 @@ void handleRoot() {
   response += "\nFlashMode: ";
   ESP.flashRead(0, (uint32_t *)&buffer4, 4);
   uint32_t FlashMode  = (buffer4 >> 16) &0xF;
-  uint32_t FlashSpeed = (buffer4 >> 24) &0x0F;
-  uint32_t FlashSize  = (buffer4 >> 24) &0xF0;
-//  sprintf(bufferx,"buffer4 0x%08X\n",buffer4);
-//  response += bufferx;
-  
+  uint32_t FlashSpeed = (buffer4 >> 24) &0xF;
+  uint32_t FlashSize  = (buffer4 >> 28) &0xF;
 
-  if(FlashSize == 0x00)  response += "512K ";
-  if(FlashSize == 0x10)  response += "256K ";
-  if(FlashSize == 0x20)  response += "1M ";
-  if(FlashSize == 0x30)  response += "2M ";
-  if(FlashSize == 0x40)  response += "4M ";
+  switch(FlashSize){
+    case 0x0:  response += "512K ";  break;
+    case 0x1:  response += "256K ";  break;
+    case 0x2:  response += "1M ";  break;
+    case 0x3:  response += "2M ";  break;
+    case 0x4:  response += "4M ";  break;
+    case 0x8:  response += "8M ";  break;
+    case 0x9:  response += "16M ";  break;
+  }
 
-  if(FlashMode == 0)  response += "QIO";
-  if(FlashMode == 1)  response += "QOUT";
-  if(FlashMode == 2)  response += "DIO";
-  if(FlashMode == 3)  response += "DOUT";
+  switch(FlashMode){
+    case 0:  response += "QIO";  break;
+    case 1:  response += "QOUT";  break;
+    case 2:  response += "DIO";  break;
+    case 3:  response += "DOUT";  break;
+  }
 
-  if(FlashSpeed == 0x0)  response += " @ 40MHz";
-  if(FlashSpeed == 0x1)  response += " @ 26MHz";
-  if(FlashSpeed == 0x2)  response += " @ 20MHz";
-  if(FlashSpeed == 0xF)  response += " @ 80MHz";
-
+  switch(FlashSpeed){
+    case 0x0:  response += " @ 40MHz";  break;
+    case 0x1:  response += " @ 26MHz";  break;
+    case 0x2:  response += " @ 20MHz";  break;
+    case 0xF:  response += " @ 80MHz";  break;
+  }
     
   response += "\nFlashChipId: ";
   response += String(ESP.getFlashChipId(),HEX);
   
   response += "\nFlashChipRealSize: ";
   response +=  ESP.getFlashChipRealSize();
-  
-  response += "\nFlashChipSize: ";
-  response += ESP.getFlashChipSize();
-  
-  response += "\nFlashChipMode: ";
-  response += ESP.getFlashChipMode();
 
   response += "\nsystem_upgrade_userbin_check: ";
   if (userspace == 0)
