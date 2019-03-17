@@ -130,34 +130,14 @@ void handleFlash2(){
   }
   else
   {
+    char * url = URL_ROM_2;
+    if (server.argName(0)=="url")
+      url = server.arg(0).c_str();
     message += "Device should flash ";
-    message += URL_ROM_2;
+    message += url;
     message += " to userspace 0x81000 and restart\n";
     server.send(200, "text/plain", message);
-    flashRom2(URL_ROM_2);
-  }
-}
-
-void handleFlash2URL(){
-  String message = "";
-  if (userspace)
-  {
-    message += "Device is already booting from userspace 2 (0x81000)\n";
-    server.send(200, "text/plain", message);
-    return;
-  }
-  else
-  {
-    if (server.argName(0)=="url") {
-      sprintf(bufferx,"URL = %s\n",server.arg(0).c_str());
-      message = bufferx;
-      server.send(200, "text/plain", message);
-    }
-//    message += "Device should flash ";
-//    message += URL_ROM_2;
-//    message += "to userspace 0x81000 and restart";
-//    server.send(200, "text/plain", message);
-//    flashRom2();
+    flashRom2(url);
   }
 }
 
@@ -171,37 +151,18 @@ void handleUndo(){
   system_upgrade_reboot();
 }
 
-void handleFlashURL(){
-  String message = "";
-  if (userspace)
-  {
-    if (server.argName(0)=="url") {
-      message += "Device should flash ";
-      sprintf(bufferx,"%s",server.arg(0).c_str());
-      message += bufferx;
-      message += " and restart\n";
-      server.send(200, "text/plain", message);
-      flashRom1(server.arg(0).c_str());
-    }
-  }
-  else
-  {
-    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
-    server.send(200, "text/plain", message);
-    return;
-  }
-}
-
-
 void handleFlash3(){
   String message = "";
   if (userspace)
   {
+    char * url = URL_ROM_3;
+    if (server.argName(0)=="url")
+      url = server.arg(0).c_str();
     message += "Device should flash ";
-    message += URL_ROM_3;
+    message += url;
     message += " and restart\n";
     server.send(200, "text/plain", message);
-    flashRom1(URL_ROM_3);
+    flashRom1(url);
   }
   else
   {
@@ -235,7 +196,6 @@ void setup_webserver(void){
   server.on("/flashsize", handleFlashsize);
   server.on("/flash2", handleFlash2);
   server.on("/flash3", handleFlash3);
-  server.on("/flashURL", HTTP_GET,  handleFlashURL);
   server.on("/undo", handleUndo);
   server.on("/get", HTTP_GET, handleRead);
   server.onNotFound(handleNotFound);
