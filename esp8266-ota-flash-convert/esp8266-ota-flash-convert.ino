@@ -209,7 +209,9 @@ void handleFlash3(){
 
 
 void handleRead(){
-  server.sendHeader("Content-Disposition", "attachment; filename=\"firmware.bin\"");
+  char contentDisposition[43];
+  sprintf(contentDisposition, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
+  server.sendHeader("Content-Disposition", contentDisposition);
   server.send_P(200, "application/octet-stream", (PGM_P) SPI_FLASH_ADDR, ESP.getFlashChipSize());
 }
 
