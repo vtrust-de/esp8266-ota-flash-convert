@@ -116,12 +116,6 @@ void handleNotFound(){
   server.send(404, "text/plain", message);
 }
 
-void handleFlashsize(){
-  String message = "";
-  message += ESP.getFlashChipRealSize();
-  server.send(200, "text/plain", message);
-}
-
 void handleFlash2(){
   String message = "";
   if (userspace)
@@ -221,7 +215,6 @@ void handleRead(){
 
 void setup_webserver(void){
   server.on("/", handleRoot);
-  server.on("/flashsize", handleFlashsize);
   server.on("/flash2", handleFlash2);
   server.on("/flash3", handleFlash3);
   server.on("/flashURL", HTTP_GET,  handleFlashURL);
