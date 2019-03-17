@@ -130,7 +130,7 @@ void handleFlash2(){
   }
   else
   {
-    char * url = URL_ROM_2;
+    const char * url = URL_ROM_2;
     if (server.argName(0)=="url")
       url = server.arg(0).c_str();
     message += "Device should flash ";
@@ -155,7 +155,7 @@ void handleFlash3(){
   String message = "";
   if (userspace)
   {
-    char * url = URL_ROM_3;
+    const char * url = URL_ROM_3;
     if (server.argName(0)=="url")
       url = server.arg(0).c_str();
     message += "Device should flash ";
