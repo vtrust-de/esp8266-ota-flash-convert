@@ -213,7 +213,7 @@ void setup()
 {
   // using esp boot loader default baud rate so we don't have to keep switching baud rates to get all the messages
   Serial.begin(74880);
-  Serial.print("\n");
+  Serial.println();
   Serial.print(VERSION);
   connectToWiFiBlocking();
   setup_webserver();
@@ -231,11 +231,9 @@ void softAPsetup()
 
 void connectToWiFiBlocking()
 {
-  char ssid[32] = {0};
-  char pass[64] = {0};
   int x = 0;
 
-  Serial.printf("Connecting to Wifi...",ssid,pass);
+  Serial.print("Connecting to Wifi");
   WiFi.persistent(false);
   WiFi.mode(WIFI_OFF);
   WiFi.mode(WIFI_STA);
@@ -250,15 +248,12 @@ void connectToWiFiBlocking()
     Serial.print("."); yield(); // reset watchdog
     if(x>100)
     {
+      Serial.println("\nFailed to connect");
       softAPsetup();
-      break;  
+      return;
     }
   }
-  Serial.print("Done\n");
-  Serial.print("Connected to ");
-  Serial.println(ssid);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.printf("\nConnected to %s as %s\n", WIFI_SSID, WiFi.localIP());
 }
 
 
