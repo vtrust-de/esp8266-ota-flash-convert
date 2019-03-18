@@ -12,6 +12,7 @@ extern "C" void system_upgrade_reboot (void);
 #define SECTOR_SIZE 4096
 #define BUFFER_SIZE 1024
 #define TIMEOUT 5000
+#define SPI_FLASH_ADDR 0x40200000
 
 #define VERSION "VTRUST-FLASH 1.0\n(c) VTRUST GMBH https://www.vtrust.de/35c3/\n"
 #define WIFI_SSID "vtrust-flash"
@@ -114,12 +115,6 @@ void handleNotFound(){
   server.send(404, "text/plain", message);
 }
 
-void handleFlashsize(){
-  String message = "";
-  message += ESP.getFlashChipRealSize();
-  server.send(200, "text/plain", message);
-}
-
 void handleFlash2(){
   String message = "";
   if (userspace)
@@ -174,26 +169,14 @@ void handleFlash3(){
 
 
 void handleRead(){
-  String message;
-  if (server.argName(0)=="read") {
-    address = (int) strtol(server.arg(0).c_str(), 0, 16);
-    sprintf(bufferx,"read 0x%08X to 0x%08X\n",address,address+1023);
-    message = bufferx;
-    for(int i=0;i<1024/4;i++)
-    {
-      ESP.flashRead(address+(i*4), (uint32_t *)&buffer4, 4);
-      sprintf(bufferx,"%02X%02X%02X%02X",buffer4&0xFF,(buffer4>>8)&0xFF,(buffer4>>16)&0xFF,(buffer4>>24)&0xFF);
-      message += bufferx;
-    }
-  } else {
-      message = "No message sent";
-  }
-  server.send(200, "text/plain", message);
+  char contentDisposition[43];
+  sprintf(contentDisposition, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
+  server.sendHeader("Content-Disposition", contentDisposition);
+  server.send_P(200, "application/octet-stream", (PGM_P) SPI_FLASH_ADDR, ESP.getFlashChipSize());
 }
 
 void setup_webserver(void){
   server.on("/", handleRoot);
-  server.on("/flashsize", handleFlashsize);
   server.on("/flash2", handleFlash2);
   server.on("/flash3", handleFlash3);
   server.on("/undo", handleUndo);
