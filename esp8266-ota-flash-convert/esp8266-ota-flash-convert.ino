@@ -5,6 +5,14 @@ extern "C" uint8_t system_upgrade_userbin_check();
 extern "C" void system_upgrade_flag_set(uint8 flag);
 extern "C" void system_upgrade_reboot (void);
 
+#define MAGIC_V1 0xE9
+#define MAGIC_V2 0xEA
+#define UPGRADE_FLAG_START 0x01
+#define UPGRADE_FLAG_FINISH 0x02
+#define SECTOR_SIZE 4096
+#define BUFFER_SIZE 1024
+#define TIMEOUT 5000
+
 #define VERSION "VTRUST-FLASH 1.0\n(c) VTRUST GMBH https://www.vtrust.de/35c3/\n"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_PASSWORD "flashmeifyoucan"
@@ -156,23 +164,13 @@ void handleFlash2URL(){
 }
 
 void handleUndo(){
-  String message = "";
-  message += "Removing esp8266-ota-flash-convert and reboot";
+  uint8_t userBin = system_upgrade_userbin_check();
+  String message = "Rebooting into userspace ";
+  message += userBin ? "1" : "2";
   server.send(200, "text/plain", message);
 
-  uint8_t userBin = system_upgrade_userbin_check();
-  if (userBin == 0)
-  {
-    ESP.flashEraseSector(1);
-//    ESP.restart();
-  }
-  if (userBin == 1)
-  {
-    ESP.flashEraseSector(128);
-    ESP.flashEraseSector(129);
-    ESP.flashEraseSector(130);
-//    ESP.restart();
-  }
+  system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
+  system_upgrade_reboot();
 }
 
 void handleFlashURL(){
@@ -264,20 +262,13 @@ void setup_webserver(void){
 
 
 
-#define MAGIC_V1 0xE9
-#define MAGIC_V2 0xEA
-#define UPGRADE_FLAG_START 0x01
-#define UPGRADE_FLAG_FINISH 0x02
-#define SECTOR_SIZE 4096
-#define BUFFER_SIZE 1024
-#define TIMEOUT 5000
-
 byte buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
 byte bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
 void setup()
 {
-  Serial.begin(115200);
+  // using esp boot loader default baud rate so we don't have to keep switching baud rates to get all the messages
+  Serial.begin(74880);
   Serial.print("\n");
   Serial.print(VERSION);
   connectToWiFiBlocking();
