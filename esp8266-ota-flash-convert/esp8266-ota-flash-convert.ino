@@ -235,7 +235,7 @@ void connectToWiFiBlocking()
       return;
     }
   }
-  Serial.printf("\nConnected to %s as %s\n", WIFI_SSID, WiFi.localIP());
+  Serial.printf("\nConnected to %s as %s\n", WIFI_SSID, WiFi.localIP().toString().c_str());
 }
 
 
