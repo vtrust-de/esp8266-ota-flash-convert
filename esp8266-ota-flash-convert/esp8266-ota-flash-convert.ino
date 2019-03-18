@@ -31,7 +31,6 @@ IPAddress subnet(255,255,255,0);
 ESP8266WebServer server(80);
 
 uint32_t address;
-char bufferx[50];
 uint32_t buffer4;
 
 uint8_t userspace = system_upgrade_userbin_check();
@@ -41,7 +40,7 @@ void handleRoot() {
   response += "\nREAD FLASH: http://";
   response += WiFi.localIP().toString();
   WiFi.printDiag(Serial);
-  response += "/get?read=HEX-ADDRESS\n" ;
+  response += "/backup\n" ;
 
   response += "ChipID: " ;
   response += String(ESP.getChipId(),HEX);
@@ -180,7 +179,7 @@ void setup_webserver(void){
   server.on("/flash2", handleFlash2);
   server.on("/flash3", handleFlash3);
   server.on("/undo", handleUndo);
-  server.on("/get", HTTP_GET, handleRead);
+  server.on("/backup", handleRead);
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
