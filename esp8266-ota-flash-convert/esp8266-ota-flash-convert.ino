@@ -29,6 +29,7 @@ IPAddress subnet(255,255,255,0);
 #define URL_ROM_3 "http://10.42.42.1/files/thirdparty.bin"
 
 ESP8266WebServer server(80);
+char responseBuffer[282]; // total + 1 (for null terminal)
 
 uint8_t userspace = system_upgrade_userbin_check();
 
@@ -67,8 +68,7 @@ void handleRoot() {
     case 0xF:  FlashSpeed = "80";  break;
   }
 
-  char response[282]; // total + 1 (for null terminal)
-  sprintf(response,
+  sprintf(responseBuffer,
     VERSION "\n"                               // 61
     "READ FLASH: http://%s/backup" "\n"        // 27
     "ChipID: %x" "\n"                          // 9
@@ -89,71 +89,65 @@ void handleRoot() {
     ESP.getFlashChipRealSize() / 1024,         // max 4
     userspace ? "2 0x81" : "1 0x01");          // 6
 
-  server.send(200, "text/plain", response);
+  server.send(200, "text/plain", responseBuffer);
 }
 
 void handleNotFound(){
-  String message = "File Not Found\n\n";
-  server.send(404, "text/plain", message);
+  server.send(404, "text/plain", "File Not Found\n");
 }
 
 void handleFlash2(){
-  String message = "";
   if (userspace)
   {
-    message += "Device is already booting from userspace 2 (0x81000)\n";
-    server.send(200, "text/plain", message);
+    server.send(200, "text/plain", "Device is already booting from userspace 2 (0x81000)\n");
     return;
   }
   else
   {
     const char * url = URL_ROM_2;
-    if (server.argName(0)=="url")
-      url = server.arg(0).c_str();
-    message += "Device should flash ";
-    message += url;
-    message += " to userspace 0x81000 and restart\n";
-    server.send(200, "text/plain", message);
+    String customUrl;
+    if (server.hasArg("url")) {
+      customUrl = server.arg("url");
+      url = customUrl.c_str();
+    }
+    sprintf(responseBuffer, "Device should flash %s to userspace 0x81000 and restart\n", url);
+    server.send(200, "text/plain", responseBuffer);
     flashRom2(url);
   }
 }
 
 void handleUndo(){
-  String message = "Rebooting into userspace ";
-  message += userspace ? "1" : "2";
-  message += "\n";
-  server.send(200, "text/plain", message);
+  sprintf(responseBuffer, "Rebooting into userspace %d\n", 2 - userspace);
+  server.send(200, "text/plain", responseBuffer);
 
   system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
   system_upgrade_reboot();
 }
 
 void handleFlash3(){
-  String message = "";
   if (userspace)
   {
     const char * url = URL_ROM_3;
-    if (server.argName(0)=="url")
-      url = server.arg(0).c_str();
-    message += "Device should flash ";
-    message += url;
-    message += " and restart\n";
-    server.send(200, "text/plain", message);
+    String customUrl;
+    if (server.hasArg("url")) {
+      customUrl = server.arg("url");
+      url = customUrl.c_str();
+    }
+    sprintf(responseBuffer, "Device should flash %s and restart\n", url);
+    server.send(200, "text/plain", responseBuffer);
     flashRom1(url);
   }
   else
   {
-    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
-    server.send(200, "text/plain", message);
+    server.send(200, "text/plain", "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n");
     return;
   }
 }
 
 
 void handleRead(){
-  char contentDisposition[43];
-  sprintf(contentDisposition, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
-  server.sendHeader("Content-Disposition", contentDisposition);
+  sprintf(responseBuffer, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
+  server.sendHeader("Content-Disposition", responseBuffer);
   server.send_P(200, "application/octet-stream", (PGM_P) SPI_FLASH_ADDR, ESP.getFlashChipSize());
 }
 
