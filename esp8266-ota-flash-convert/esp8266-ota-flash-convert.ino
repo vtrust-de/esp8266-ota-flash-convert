@@ -332,7 +332,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       erase_start++;
       write_address += SECTOR_SIZE;
       len -= SECTOR_SIZE;
-      Serial.printf(".Done\n");
+      Serial.println("Done");
     }
 
     Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_sector_end);
@@ -341,7 +341,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       ESP.flashEraseSector(i);
       Serial.print("."); yield(); // reset watchdog
     }  
-    Serial.printf("Done\n");
+    Serial.println("Done");
     
     Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", write_address, write_address+len, sizeof(buffer));
     //Serial.println();
@@ -363,13 +363,13 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
 
     if(bootloader)
     {
-      Serial.printf("Erasing bootloader sector 0");
+      Serial.println("Erasing bootloader sector 0");
       ESP.flashEraseSector(0);
-      Serial.printf("..Done\n");
+      Serial.println("Done");
       
       Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
       ESP.flashWrite(0, (uint32_t*)&bootrom[0], SECTOR_SIZE);
-      Serial.printf("..Done\n");
+      Serial.println("Done");
     }
 
     return true;
