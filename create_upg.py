@@ -1,17 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 """
 create_upg.py
 
 Created by nano on 2019-01-28.
+Contributions by kueblc
 Copyright (c) 2019 __MyCompanyName__. All rights reserved.
 """
 
-import sys
-import os
-from binascii import unhexlify
-
-version = "9.0.0"
+version = b"9.0.0"
 section_count = 2
 header_len = 0x33
 
@@ -21,7 +18,7 @@ header_len = 0x33
 00 00 00 02 | section_count
 00 00 00 33 | user1 start
 00 03 E1 04 | user1 len
-01 4D AC 94 | user1 chk
+01 4D AC 94 | user1 sum
 00 03 E1 37 | user2 start
 00 03 E1 04 | user2 len
 01 4D BE 3A | user2 sum
@@ -29,54 +26,44 @@ header_len = 0x33
 AA 55 AA 55 | header_end
 """
 
+def loadbin(filename):
+    f = open(filename,"rb")
+    contents = f.read()
+    f.close()
+    return contents
+
+packInt = lambda x : x.to_bytes(4, byteorder='big')
+
 def main():
-    upg = unhexlify("55AA55AA") 
-    upg = upg + version + (11 - len(version)) * chr(0)
-    upg = upg + unhexlify("%08X" % section_count)
-    upg = upg + unhexlify("%08X" % header_len)
+    user1 = loadbin("esp8266-ota-flash-convert.ino-0x01000.bin")
+    user1_len = len(user1)
+    user1_sum = sum(user1)
+    print("user1 len:%x, sum:%x" % (user1_len,user1_sum))
 
-    user1_file = open("esp8266-ota-flash-convert.ino-0x01000.bin","rb")
-    user1 = user1_file.read()
-    user1_file.close()
-    user1_chk = 0
-    for x in user1:
-        user1_chk = user1_chk + ord(x)
-    print("user1 len:%x, chk:%x" % (len(user1),user1_chk))
+    user2 = loadbin("esp8266-ota-flash-convert.ino-0x81000.bin")
+    user2_len = len(user2)
+    user2_sum = sum(user2)
+    print("user2 len:%x, sum:%x" % (user2_len,user2_sum))
 
-    user2_file = open("esp8266-ota-flash-convert.ino-0x81000.bin","rb")
-    user2 = user2_file.read()
-    user2_file.close()
-    user2_chk = 0
-    for x in user2:
-        user2_chk = user2_chk + ord(x)
-    print("user2 len:%x, chk:%x" % (len(user2),user2_chk))
+    upg = b"\x55\xAA\x55\xAA" +\
+        version.ljust(11, b"\0") +\
+        packInt(section_count) +\
+        packInt(header_len) +\
+        packInt(user1_len) +\
+        packInt(user1_sum) +\
+        packInt(header_len + user1_len) +\
+        packInt(user2_len) +\
+        packInt(user2_sum)
 
-
-    upg = unhexlify("55AA55AA") 
-    upg = upg + version + (11 - len(version)) * chr(0)
-    upg = upg + unhexlify("%08X" % section_count)
-    upg = upg + unhexlify("%08X" % header_len)
-    upg = upg + unhexlify("%08X" % len(user1))
-    upg = upg + unhexlify("%08X" % user1_chk)
-    upg = upg + unhexlify("%08X" % (len(user1) + header_len))
-    upg = upg + unhexlify("%08X" % len(user2))
-    upg = upg + unhexlify("%08X" % user2_chk)
-
-    upg_chk = 0
-    for x in upg:
-        upg_chk = upg_chk + ord(x)
-    print("upgchk:%x" % (upg_chk))
-    upg = upg + unhexlify("%08X" % upg_chk)
-    upg = upg + unhexlify("AA55AA55") 
+    upg_sum = sum(upg)
+    print("upgchk:%x" % (upg_sum))
+    upg = upg + packInt(upg_sum) + b"\xAA\x55\xAA\x55"
 
     upgfile = open("esp8266-ota-flash-convert_upg.bin","wb")
     upgfile.write(upg)
     upgfile.write(user1)
     upgfile.write(user2)
     upgfile.close()
-
-    pass
-
 
 if __name__ == '__main__':
     main()
