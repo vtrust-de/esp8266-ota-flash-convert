@@ -4,6 +4,8 @@ ARDUINO_PATH="/esp/arduino"
 #FLASH_PROPERTY="custom_eesz"
 FLASH_PROPERTY="custom_FlashSize"
 
+cd ..
+
 mkdir -p build
 
 build_user () {
