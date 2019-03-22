@@ -14,7 +14,7 @@ extern "C" void system_upgrade_reboot (void);
 #define TIMEOUT 5000
 #define SPI_FLASH_ADDR 0x40200000
 
-#define VERSION "VTRUST-FLASH 1.0\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
+#define VERSION "VTRUST-FLASH 1.1\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_PASSWORD "flashmeifyoucan"
 #define WIFI_APSSID "vtrust-recovery"
