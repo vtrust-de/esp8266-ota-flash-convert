@@ -14,7 +14,7 @@ extern "C" void system_upgrade_reboot (void);
 #define TIMEOUT 5000
 #define SPI_FLASH_ADDR 0x40200000
 
-#define VERSION "VTRUST-FLASH 1.0\n(c) VTRUST GMBH https://www.vtrust.de/35c3/\n"
+#define VERSION "VTRUST-FLASH 1.0\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_PASSWORD "flashmeifyoucan"
 #define WIFI_APSSID "vtrust-recovery"
@@ -29,148 +29,125 @@ IPAddress subnet(255,255,255,0);
 #define URL_ROM_3 "http://10.42.42.1/files/thirdparty.bin"
 
 ESP8266WebServer server(80);
-
-uint32_t address;
-uint32_t buffer4;
+char responseBuffer[282]; // total + 1 (for null terminal)
 
 uint8_t userspace = system_upgrade_userbin_check();
 
 void handleRoot() {
-  String response = VERSION;
-  response += "\nREAD FLASH: http://";
-  response += WiFi.localIP().toString();
+  // print WiFi diagonistics to Serial
   WiFi.printDiag(Serial);
-  response += "/backup\n" ;
 
-  response += "ChipID: " ;
-  response += String(ESP.getChipId(),HEX);
+  // get flash info; size, mode, and speed
+  uint32_t flashInfo;
+  ESP.flashRead(0, (uint32_t *)&flashInfo, 4);
 
-  response += "\nMAC: ";
-  response += WiFi.macAddress();
-
-  response += "\nCoreVersion: ";
-  response += ESP.getCoreVersion();
-
-  response += "\nSdkVersion: ";
-  response += ESP.getSdkVersion();
-  
-  response += "\nBootVersion: ";
-  response += ESP.getBootVersion();
-  
-  response += "\nBootMode: ";
-  response += ESP.getBootMode();
-  
-  response += "\nFlashMode: ";
-  ESP.flashRead(0, (uint32_t *)&buffer4, 4);
-  uint32_t FlashMode  = (buffer4 >> 16) &0xF;
-  uint32_t FlashSpeed = (buffer4 >> 24) &0xF;
-  uint32_t FlashSize  = (buffer4 >> 28) &0xF;
-
-  switch(FlashSize){
-    case 0x0:  response += "512K ";  break;
-    case 0x1:  response += "256K ";  break;
-    case 0x2:  response += "1M ";  break;
-    case 0x3:  response += "2M ";  break;
-    case 0x4:  response += "4M ";  break;
-    case 0x8:  response += "8M ";  break;
-    case 0x9:  response += "16M ";  break;
+  const char * FlashSize = "";
+  switch((flashInfo >> 28) & 0xF){
+    case 0x0:  FlashSize = "512K";  break;
+    case 0x1:  FlashSize = "256K";  break;
+    case 0x2:  FlashSize = "1M";  break;
+    case 0x3:  FlashSize = "2M";  break;
+    case 0x4:  FlashSize = "4M";  break;
+    case 0x8:  FlashSize = "8M";  break;
+    case 0x9:  FlashSize = "16M";  break;
   }
 
-  switch(FlashMode){
-    case 0:  response += "QIO";  break;
-    case 1:  response += "QOUT";  break;
-    case 2:  response += "DIO";  break;
-    case 3:  response += "DOUT";  break;
+  const char * FlashMode = "";
+  switch((flashInfo >> 16) & 0xF){
+    case 0:  FlashMode = "QIO";  break;
+    case 1:  FlashMode = "QOUT";  break;
+    case 2:  FlashMode = "DIO";  break;
+    case 3:  FlashMode = "DOUT";  break;
   }
 
-  switch(FlashSpeed){
-    case 0x0:  response += " @ 40MHz";  break;
-    case 0x1:  response += " @ 26MHz";  break;
-    case 0x2:  response += " @ 20MHz";  break;
-    case 0xF:  response += " @ 80MHz";  break;
+  const char * FlashSpeed = "";
+  switch((flashInfo >> 24) & 0xF){
+    case 0x0:  FlashSpeed = "40";  break;
+    case 0x1:  FlashSpeed = "26";  break;
+    case 0x2:  FlashSpeed = "20";  break;
+    case 0xF:  FlashSpeed = "80";  break;
   }
-    
-  response += "\nFlashChipId: ";
-  response += String(ESP.getFlashChipId(),HEX);
-  
-  response += "\nFlashChipRealSize: ";
-  response +=  ESP.getFlashChipRealSize();
 
-  response += "\nsystem_upgrade_userbin_check: ";
-  if (userspace == 0)
-    response += "user1 0x01000";
-  else if(userspace == 1)
-    response += "user2 0x81000";
-  else
-    response += "userspace not recognized";
+  sprintf(responseBuffer,
+    VERSION "\n"                               // 61
+    "READ FLASH: http://%s/backup" "\n"        // 27
+    "ChipID: %x" "\n"                          // 9
+    "MAC: %s" "\n"                             // 6
+    "BootVersion: %d" "\n"                     // 14
+    "BootMode: %s" "\n"                        // 11
+    "FlashMode: %s %s @ %sMHz" "\n"            // 19
+    "FlashChipId: %x" "\n"                     // 14
+    "FlashChipRealSize: %dK" "\n"              // 21
+    "Active Userspace: user%s000" "\n",        // 26
+    WiFi.localIP().toString().c_str(),         // max 15
+    ESP.getChipId(),                           // 6
+    WiFi.macAddress().c_str(),                 // 17
+    ESP.getBootVersion(),                      // 1
+    ESP.getBootMode() ? "normal" : "enhanced", // max 8
+    FlashSize, FlashMode, FlashSpeed,          // max 10
+    ESP.getFlashChipId(),                      // 6
+    ESP.getFlashChipRealSize() / 1024,         // max 4
+    userspace ? "2 0x81" : "1 0x01");          // 6
 
-  response += "\n";
- 
-  server.send(200, "text/plain", response);
+  server.send(200, "text/plain", responseBuffer);
 }
 
 void handleNotFound(){
-  String message = "File Not Found\n\n";
-  server.send(404, "text/plain", message);
+  server.send(404, "text/plain", "File Not Found\n");
 }
 
 void handleFlash2(){
-  String message = "";
   if (userspace)
   {
-    message += "Device is already booting from userspace 2 (0x81000)\n";
-    server.send(200, "text/plain", message);
+    server.send(200, "text/plain", "Device is already booting from userspace 2 (0x81000)\n");
     return;
   }
   else
   {
     const char * url = URL_ROM_2;
-    if (server.argName(0)=="url")
-      url = server.arg(0).c_str();
-    message += "Device should flash ";
-    message += url;
-    message += " to userspace 0x81000 and restart\n";
-    server.send(200, "text/plain", message);
+    String customUrl;
+    if (server.hasArg("url")) {
+      customUrl = server.arg("url");
+      url = customUrl.c_str();
+    }
+    sprintf(responseBuffer, "Device should flash %s to userspace 0x81000 and restart\n", url);
+    server.send(200, "text/plain", responseBuffer);
     flashRom2(url);
   }
 }
 
 void handleUndo(){
-  String message = "Rebooting into userspace ";
-  message += userspace ? "1" : "2";
-  message += "\n";
-  server.send(200, "text/plain", message);
+  sprintf(responseBuffer, "Rebooting into userspace %d\n", 2 - userspace);
+  server.send(200, "text/plain", responseBuffer);
 
   system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
   system_upgrade_reboot();
 }
 
 void handleFlash3(){
-  String message = "";
   if (userspace)
   {
     const char * url = URL_ROM_3;
-    if (server.argName(0)=="url")
-      url = server.arg(0).c_str();
-    message += "Device should flash ";
-    message += url;
-    message += " and restart\n";
-    server.send(200, "text/plain", message);
+    String customUrl;
+    if (server.hasArg("url")) {
+      customUrl = server.arg("url");
+      url = customUrl.c_str();
+    }
+    sprintf(responseBuffer, "Device should flash %s and restart\n", url);
+    server.send(200, "text/plain", responseBuffer);
     flashRom1(url);
   }
   else
   {
-    message += "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n";
-    server.send(200, "text/plain", message);
+    server.send(200, "text/plain", "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n");
     return;
   }
 }
 
 
 void handleRead(){
-  char contentDisposition[43];
-  sprintf(contentDisposition, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
-  server.sendHeader("Content-Disposition", contentDisposition);
+  sprintf(responseBuffer, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
+  server.sendHeader("Content-Disposition", responseBuffer);
   server.send_P(200, "application/octet-stream", (PGM_P) SPI_FLASH_ADDR, ESP.getFlashChipSize());
 }
 
@@ -196,7 +173,7 @@ void setup()
   // using esp boot loader default baud rate so we don't have to keep switching baud rates to get all the messages
   Serial.begin(74880);
   Serial.println();
-  Serial.print(VERSION);
+  Serial.println(VERSION);
   connectToWiFiBlocking();
   setup_webserver();
 }
@@ -204,7 +181,7 @@ void setup()
 
 void softAPsetup()
 {
-  Serial.println("\nSetting up SoftAP...");
+  Serial.println("Setting up SoftAP...");
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAPConfig(ip, gateway , subnet);   // subnet FF FF FF 00
   WiFi.softAP(WIFI_APSSID);
@@ -355,7 +332,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       erase_start++;
       write_address += SECTOR_SIZE;
       len -= SECTOR_SIZE;
-      Serial.printf(".Done\n");
+      Serial.println("Done");
     }
 
     Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_sector_end);
@@ -364,7 +341,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       ESP.flashEraseSector(i);
       Serial.print("."); yield(); // reset watchdog
     }  
-    Serial.printf("Done\n");
+    Serial.println("Done");
     
     Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", write_address, write_address+len, sizeof(buffer));
     //Serial.println();
@@ -386,13 +363,13 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
 
     if(bootloader)
     {
-      Serial.printf("Erasing bootloader sector 0");
+      Serial.println("Erasing bootloader sector 0");
       ESP.flashEraseSector(0);
-      Serial.printf("..Done\n");
+      Serial.println("Done");
       
       Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
       ESP.flashWrite(0, (uint32_t*)&bootrom[0], SECTOR_SIZE);
-      Serial.printf("..Done\n");
+      Serial.println("Done");
     }
 
     return true;
