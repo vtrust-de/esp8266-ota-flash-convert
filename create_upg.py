@@ -26,6 +26,10 @@ header_len = 0x33
 AA 55 AA 55 | header_end
 """
 
+USERBIN_1 = ".pioenvs/user1/firmware-0x01000.bin"
+USERBIN_2 = ".pioenvs/user2/firmware-0x81000.bin"
+OUTBIN = "esp8266-ota-flash-convert_upg.bin"
+
 def loadbin(filename):
     f = open(filename,"rb")
     contents = f.read()
@@ -35,12 +39,12 @@ def loadbin(filename):
 packInt = lambda x : x.to_bytes(4, byteorder='big')
 
 def main():
-    user1 = loadbin("esp8266-ota-flash-convert.ino-0x01000.bin")
+    user1 = loadbin(USERBIN_1)
     user1_len = len(user1)
     user1_sum = sum(user1)
     print("user1 len:%x, sum:%x" % (user1_len,user1_sum))
 
-    user2 = loadbin("esp8266-ota-flash-convert.ino-0x81000.bin")
+    user2 = loadbin(USERBIN_2)
     user2_len = len(user2)
     user2_sum = sum(user2)
     print("user2 len:%x, sum:%x" % (user2_len,user2_sum))
@@ -59,7 +63,7 @@ def main():
     print("upgchk:%x" % (upg_sum))
     upg = upg + packInt(upg_sum) + b"\xAA\x55\xAA\x55"
 
-    upgfile = open("esp8266-ota-flash-convert_upg.bin","wb")
+    upgfile = open(OUTBIN,"wb")
     upgfile.write(upg)
     upgfile.write(user1)
     upgfile.write(user2)
