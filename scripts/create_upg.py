@@ -26,9 +26,9 @@ header_len = 0x33
 AA 55 AA 55 | header_end
 """
 
-USERBIN_1 = ".pioenvs/user1/firmware-0x01000.bin"
-USERBIN_2 = ".pioenvs/user2/firmware-0x81000.bin"
-OUTBIN = "esp8266-ota-flash-convert_upg.bin"
+USERBIN_1 = "build/esp8266-ota-flash-convert.ino-0x01000.bin"
+USERBIN_2 = "build/esp8266-ota-flash-convert.ino-0x81000.bin"
+OUTBIN = "build/esp8266-ota-flash-convert_upg.bin"
 
 def loadbin(filename):
     f = open(filename,"rb")
