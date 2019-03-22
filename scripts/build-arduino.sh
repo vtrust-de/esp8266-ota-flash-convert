@@ -10,7 +10,7 @@ build_user () {
 	echo "==============="
 	echo "Compiling user$1"
 	echo "==============="
-	$ARDUINO_PATH --pref build.path=build/user$1 --pref $FLASH_PROPERTY=generic_1M0_$1 --verify esp8266-ota-flash-convert/esp8266-ota-flash-convert.ino &&
+	$ARDUINO_PATH --pref build.path=build/user$1 --pref $FLASH_PROPERTY=generic_1M0_$1 --verify src/esp8266-ota-flash-convert.ino &&
 	esptool.py elf2image --version 2 build/user$1/esp8266-ota-flash-convert.ino.elf &&
 	mv build/user$1/esp8266-ota-flash-convert.ino-0x*1000.bin build/user$1.bin
 }
