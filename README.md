@@ -25,14 +25,14 @@ cp files/*.ld $ARDUINO_PATH/packages/esp8266/hardware/esp8266/2.3.0/tools/sdk/ld
 ### Method 1 - PlatformIO (recommended)
 2.  Build and package
 ```console
-pio run && scripts/create_upg.py
+scripts/build-pio.sh
 ```
 
 ### Method 2 - Arduino CLI
-6.  Edit `$ARDUINO_PATH` in `scripts/build.sh` to point to the arduino executable
+6.  Edit `$ARDUINO_PATH` in `scripts/build-arduino.sh` to point to the arduino executable
 7.  Build and package
 ```console
-scripts/build.sh
+scripts/build-arduino.sh
 ```
 
 ### Method 3 - Arduino IDE
@@ -46,11 +46,12 @@ esptool.py elf2image --version 2 esp8266-ota-flash-convert.ino.elf
 ```console
 esptool.py elf2image --version 2 esp8266-ota-flash-convert.ino.elf
 ```
-10.  Package UPG
+10.  Move binaries into `build` directory as `user1.bin` and `user2.bin` respectively
+11.  Package UPG
 ```console
 scripts/create_upg.py
 ```
 
 ## Installing
-1.  Copy `.bin` files to the `files` directory under `tuya-convert`
+1.  Copy `.bin` files from `build` to the `files` directory under `tuya-convert`
 
