@@ -1,6 +1,5 @@
 /* Flash Split for 1M chips */
 /* sketch 999KB */
-
 /* eeprom 20KB */
 
 MEMORY
