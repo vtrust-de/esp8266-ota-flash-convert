@@ -1,32 +1,57 @@
 # esp8266-ota-flash-convert
-This is the source to generate 1.bin for https://github.com/ct-Open-Source/tuya-convert
+Intermediate upgrade firmware for ESP8266 based Tuya devices to easily backup and replace stock firmware
+
+Used for OTA flashing by https://github.com/ct-Open-Source/tuya-convert
 
 It was based on https://github.com/khcnz/Espressif2Arduino
 
-## Install Arduino 1.8.8 in OS X
-1.  Go to Preferences and add to "Additional Boards Manager URLs"
+## Setup
+### Method 1 - PlatformIO (recommended)
+1. Install `platformio`
+
+### Method 2 - Arduino
+1.  Install Arduino 1.8.8
+2.  Go to Preferences and add to "Additional Boards Manager URLs"
     http://arduino.esp8266.com/stable/package_esp8266com_index.json
-2.  Go to "Board Manager"
-3.  search esp
-4.  install **esp8266 by ESP8266 Community** version **2.3**
+3.  Go to "Board Manager" and search "esp"
+4.  Install **esp8266 by ESP8266 Community** version **2.3**
 5.  Install linker scripts from this repository
 ```console
-cp boards.txt ~/Library/Arduino15/packages/esp8266/hardware/esp8266/2.3.0
-cp *.ld ~/Library/Arduino15/packages/esp8266/hardware/esp8266/2.3.0/tools/sdk/ld
+cp files/boards.txt $ARDUINO_PATH/packages/esp8266/hardware/esp8266/2.3.0
+cp files/*.ld $ARDUINO_PATH/packages/esp8266/hardware/esp8266/2.3.0/tools/sdk/ld
 ```
-### Method 1
-6.  Close Arduino IDE and create UPG file in the terminal:
+
+## Building
+### Method 1 - PlatformIO (recommended)
+2.  Build and package
 ```console
-./create.sh
+scripts/build-pio.sh
 ```
 
-### Method 2
-6.  Build esp8266-ota-flash-convert.ino using "1M (Espressif OTA Rom 1)"
-7.  esptool.py elf2image --version 2 esp8266-ota-flash-convert.ino.elf
+### Method 2 - Arduino CLI
+6.  Edit `$ARDUINO_PATH` in `scripts/build-arduino.sh` to point to the arduino executable
+7.  Build and package
+```console
+scripts/build-arduino.sh
+```
 
-7.  Build esp8266-ota-flash-convert.ino using "1M (Espressif OTA Rom 2)"
-8.  esptool.py elf2image --version 2 esp8266-ota-flash-convert.ino.elf
+### Method 3 - Arduino IDE
+6.  Build esp8266-ota-flash-convert.ino using Flash Size "1M (Espressif OTA Rom 1)"
+7.  Convert to a version 2 binary
+```console
+esptool.py elf2image --version 2 esp8266-ota-flash-convert.ino.elf
+```
+8.  Build esp8266-ota-flash-convert.ino using Flash Size "1M (Espressif OTA Rom 2)"
+9.  Convert to a version 2 binary
+```console
+esptool.py elf2image --version 2 esp8266-ota-flash-convert.ino.elf
+```
+10.  Move binaries into `build` directory as `user1.bin` and `user2.bin` respectively
+11.  Package UPG
+```console
+scripts/create_upg.py
+```
 
-9.  Compile package with desired version number (make  clean && make USER_SW_VER="9.0.0")
-10. package esp8266-ota-flash-convert.ino-0x01000.bin  esp8266-ota-flash-convert.ino-0x81000.bin UPGRADE.bin
+## Installing
+1.  Copy `.bin` files from `build` to the `files` directory under `tuya-convert`
 
