@@ -272,7 +272,7 @@ void flashRom2(const char * url)
 bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url, uint8_t retry_limit)
 {
   uint8_t retry_counter = 0;
-  while(retry_counter < retry_limit)
+  while(retry_counter++ < retry_limit)
   {
     uint16_t erase_start = erase_sectior_start;
     uint32_t write_address = start_address;
@@ -290,7 +290,6 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     if(httpCode != HTTP_CODE_OK)
     {
       Serial.println("Invalid response Code - retry");
-      retry_counter++;
       continue;
     }
 
@@ -300,14 +299,12 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     if(len < SECTOR_SIZE)
     {
       Serial.println("Length too short - retry");
-      retry_counter++;
       continue;
     }
 
     if(len > (end_address-start_address))
     {
       Serial.println("Length exceeds flash size - retry");
-      retry_counter++;
       continue;
     }
 
@@ -318,7 +315,6 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     if(header[0] != magic)
     {
       Serial.println("Invalid magic byte - retry");
-      retry_counter++;
       continue;
     }
 
