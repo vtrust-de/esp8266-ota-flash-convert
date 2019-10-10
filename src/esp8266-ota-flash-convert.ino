@@ -29,6 +29,7 @@ IPAddress subnet(255,255,255,0);
 #define URL_ROM_3 "http://10.42.42.1/files/thirdparty.bin"
 
 ESP8266WebServer server(80);
+HTTPClient client;
 char responseBuffer[282]; // total + 1 (for null terminal)
 
 uint8_t userspace = system_upgrade_userbin_check();
@@ -279,13 +280,12 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     uint8_t header[4] = { 0 };
 
     Serial.printf("Flashing rom %d (retry:%d): %s\n", rom, retry_counter, url);
-    HTTPClient http;
-    http.begin(url);
-    http.useHTTP10(true);
-    http.setTimeout(TIMEOUT);
+    client.begin(url);
+    client.useHTTP10(true);
+    client.setTimeout(TIMEOUT);
 
     //Response Code Check
-    uint16_t httpCode = http.GET();
+    uint16_t httpCode = client.GET();
     Serial.printf("HTTP response Code: %d\n", httpCode);
     if(httpCode != HTTP_CODE_OK)
     {
@@ -294,7 +294,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     }
 
     //Length Check (at least one sector)
-    uint32_t len = http.getSize();
+    uint32_t len = client.getSize();
     Serial.printf("HTTP response length: %d\n", len);
     if(len < SECTOR_SIZE)
     {
@@ -309,7 +309,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     }
 
     //Confirm magic byte
-    WiFiClient* stream = http.getStreamPtr();
+    WiFiClient* stream = client.getStreamPtr();
     stream->peekBytes(header,4);
     Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
     if(header[0] != magic)
@@ -359,7 +359,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       }
       Serial.print("."); yield(); // reset watchdog
     }
-    http.end();
+    client.end();
     Serial.println("Done");
 
     if(bootloader)
