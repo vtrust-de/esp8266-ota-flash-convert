@@ -1,3 +1,3 @@
 #!/bin/sh
 
-rm -r build .pioenvs
+rm -r build .pio
