@@ -30,7 +30,10 @@ IPAddress subnet(255,255,255,0);
 
 ESP8266WebServer server(80);
 HTTPClient client;
-char responseBuffer[282]; // total + 1 (for null terminal)
+//char responseBuffer[282]; // total + 1 (for null terminal)
+
+char buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
+char bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
 uint8_t userspace = system_upgrade_userbin_check();
 
@@ -69,7 +72,7 @@ void handleRoot() {
     case 0xF:  FlashSpeed = "80";  break;
   }
 
-  sprintf(responseBuffer,
+  sprintf(buffer,
     VERSION "\n"                               // 61
     "READ FLASH: http://%s/backup" "\n"        // 27
     "ChipID: %x" "\n"                          // 9
@@ -90,7 +93,7 @@ void handleRoot() {
     ESP.getFlashChipRealSize() / 1024,         // max 4
     userspace ? "2 0x81" : "1 0x01");          // 6
 
-  server.send(200, "text/plain", responseBuffer);
+  server.send(200, "text/plain", buffer);
 }
 
 void handleNotFound(){
@@ -111,15 +114,15 @@ void handleFlash2(){
       customUrl = server.arg("url");
       url = customUrl.c_str();
     }
-    sprintf(responseBuffer, "Device should flash %s to userspace 0x81000 and restart\n", url);
-    server.send(200, "text/plain", responseBuffer);
+    sprintf(buffer, "Device should flash %s to userspace 0x81000 and restart\n", url);
+    server.send(200, "text/plain", buffer);
     flashRom2(url);
   }
 }
 
 void handleUndo(){
-  sprintf(responseBuffer, "Rebooting into userspace %d\n", 2 - userspace);
-  server.send(200, "text/plain", responseBuffer);
+  sprintf(buffer, "Rebooting into userspace %d\n", 2 - userspace);
+  server.send(200, "text/plain", buffer);
 
   system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
   system_upgrade_reboot();
@@ -134,8 +137,8 @@ void handleFlash3(){
       customUrl = server.arg("url");
       url = customUrl.c_str();
     }
-    sprintf(responseBuffer, "Device should flash %s and restart\n", url);
-    server.send(200, "text/plain", responseBuffer);
+    sprintf(buffer, "Device should flash %s and restart\n", url);
+    server.send(200, "text/plain", buffer);
     flashRom1(url);
   }
   else
@@ -147,8 +150,8 @@ void handleFlash3(){
 
 
 void handleRead(){
-  sprintf(responseBuffer, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
-  server.sendHeader("Content-Disposition", responseBuffer);
+  sprintf(buffer, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
+  server.sendHeader("Content-Disposition", buffer);
   server.send_P(200, "application/octet-stream", (PGM_P) SPI_FLASH_ADDR, ESP.getFlashChipSize());
 }
 
@@ -162,12 +165,6 @@ void setup_webserver(void){
   server.begin();
   Serial.println("HTTP server started");
 }
-
-
-
-
-byte buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
-byte bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
 void setup()
 {
