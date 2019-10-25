@@ -10,7 +10,7 @@ extern "C" void system_upgrade_reboot (void);
 #define UPGRADE_FLAG_START 0x01
 #define UPGRADE_FLAG_FINISH 0x02
 #define SECTOR_SIZE 4096
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE SECTOR_SIZE
 #define TIMEOUT 5000
 #define SPI_FLASH_ADDR 0x40200000
 
