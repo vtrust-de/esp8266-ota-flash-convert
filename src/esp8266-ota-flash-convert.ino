@@ -277,8 +277,6 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     uint16_t erase_start = erase_sectior_start;
     uint32_t write_address = start_address;
     uint8_t header[4] = { 0 };
-    bootrom[SECTOR_SIZE] = { 0 };
-    buffer[BUFFER_SIZE] = { 0 };
 
     Serial.printf("Flashing rom %d (retry:%d): %s\n", rom, retry_counter, url);
     HTTPClient http;
