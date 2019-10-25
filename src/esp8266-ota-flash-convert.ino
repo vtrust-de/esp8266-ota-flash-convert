@@ -313,7 +313,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
 
     //Confirm magic byte
     WiFiClient* stream = http.getStreamPtr();
-    stream->peekBytes(&header[0],4);
+    stream->peekBytes(header,4);
     Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
     if(header[0] != magic)
     {
@@ -357,7 +357,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       {
         int c = stream->readBytes(buffer, ((size > sizeof(buffer)) ? sizeof(buffer) : size));
         //Serial.printf("address=0x%06X, bytes=%d, len=%d\n", write_address, c, len);
-        ESP.flashWrite(write_address, (uint32_t*)&buffer[0], c);
+        ESP.flashWrite(write_address, (uint32_t*)buffer, c);
         write_address +=c; //increment next write address
         len -= c; //decremeant remaining bytes
       }
@@ -373,7 +373,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       Serial.println("Done");
       
       Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
-      ESP.flashWrite(0, (uint32_t*)&bootrom[0], SECTOR_SIZE);
+      ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE);
       Serial.println("Done");
     }
 
