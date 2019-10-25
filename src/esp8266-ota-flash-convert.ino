@@ -14,7 +14,7 @@ extern "C" void system_upgrade_reboot (void);
 #define TIMEOUT 5000
 #define SPI_FLASH_ADDR 0x40200000
 
-#define VERSION "VTRUST-FLASH 1.1\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
+#define VERSION "VTRUST-FLASH 1.2\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_PASSWORD "flashmeifyoucan"
 #define WIFI_APSSID "vtrust-recovery"
@@ -219,6 +219,13 @@ void connectToWiFiBlocking()
 
 void flashRom1(const char * url)
 {
+  // erase tasmota param area [244-253) and system params [253-256)
+  for (uint16_t i = 244; i < 256; i++)
+  {
+    ESP.flashEraseSector(i);
+    yield(); // reset watchdog
+  }
+
   bool result = downloadRomToFlash(
     1,                //Rom 1
     true,             //Bootloader is being updated
