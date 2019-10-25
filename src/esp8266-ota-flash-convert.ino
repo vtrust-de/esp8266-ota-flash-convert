@@ -342,17 +342,15 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
     Serial.println("Done");
     
     Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", write_address, write_address+len, sizeof(buffer));
-    //Serial.println();
     while(len > 0)
     {
       size_t size = stream->available();
       if(size >= sizeof(buffer) || size == len) 
       {
-        int c = stream->readBytes(buffer, ((size > sizeof(buffer)) ? sizeof(buffer) : size));
-        //Serial.printf("address=0x%06X, bytes=%d, len=%d\n", write_address, c, len);
+        int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
         ESP.flashWrite(write_address, (uint32_t*)buffer, c);
-        write_address +=c; //increment next write address
-        len -= c; //decremeant remaining bytes
+        write_address += c; // increment next write address
+        len -= c; // decrement remaining bytes
       }
       Serial.print("."); yield(); // reset watchdog
     }
