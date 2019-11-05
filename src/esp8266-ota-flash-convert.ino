@@ -218,7 +218,6 @@ void connectToWiFiBlocking()
 void flashRom1(const char * url)
 {
   bool result = downloadRomToFlash(
-    1,                //Rom 1
     true,             //Bootloader is being updated
     0xE9,             //Standard Arduino Magic
     0x00000,          //Write to 0x0 since we are replacing the bootloader
@@ -239,7 +238,6 @@ void flashRom2(const char * url)
 {
   system_upgrade_flag_set(UPGRADE_FLAG_START);
   bool result = downloadRomToFlash(
-    2,                //Rom 2
     false,            //Bootloader is not being updated
     0xEA,             //V2 Espressif Magic
     0x081000,         //Not replacing bootloader
@@ -261,13 +259,12 @@ void flashRom2(const char * url)
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
+bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
 {
   uint16_t erase_start = erase_sectior_start;
   uint32_t write_address = start_address;
   uint8_t header[4] = { 0 };
 
-  Serial.printf("Flashing rom %d (retry:%d): %s\n", rom, retry_counter, url);
   client.begin(url);
   client.useHTTP10(true);
   client.setTimeout(TIMEOUT);
@@ -277,7 +274,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
   Serial.printf("HTTP response Code: %d\n", httpCode);
   if(httpCode != HTTP_CODE_OK)
   {
-    Serial.println("Invalid response Code - retry");
+    Serial.println("Invalid response Code");
     return false;
   }
 
@@ -286,13 +283,13 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
   Serial.printf("HTTP response length: %d\n", len);
   if(len < SECTOR_SIZE)
   {
-    Serial.println("Length too short - retry");
+    Serial.println("Length too short");
     return false;
   }
 
   if(len > (end_address-start_address))
   {
-    Serial.println("Length exceeds flash size - retry");
+    Serial.println("Length exceeds flash size");
     return false;
   }
 
@@ -302,7 +299,7 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
   Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
   if(header[0] != magic)
   {
-    Serial.println("Invalid magic byte - retry");
+    Serial.println("Invalid magic byte");
     return false;
   }
 
