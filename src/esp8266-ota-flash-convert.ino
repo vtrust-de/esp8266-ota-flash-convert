@@ -217,7 +217,7 @@ void connectToWiFiBlocking()
 
 void flashRom1(const char * url)
 {
-  bool result = downloadRomToFlash(
+  int result = downloadRomToFlash(
     true,             //Bootloader is being updated
     0xE9,             //Standard Arduino Magic
     0x00000,          //Write to 0x0 since we are replacing the bootloader
@@ -227,7 +227,7 @@ void flashRom1(const char * url)
     url               //URL
   );
 
-  if(result)
+  if(!result)
   {
     ESP.restart();
   }
@@ -237,7 +237,7 @@ void flashRom1(const char * url)
 void flashRom2(const char * url)
 {
   system_upgrade_flag_set(UPGRADE_FLAG_START);
-  bool result = downloadRomToFlash(
+  int result = downloadRomToFlash(
     false,            //Bootloader is not being updated
     0xEA,             //V2 Espressif Magic
     0x081000,         //Not replacing bootloader
@@ -247,7 +247,7 @@ void flashRom2(const char * url)
     url               //URL
   );
   
-  if(result)
+  if(!result)
   {
     system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
     system_upgrade_reboot();
@@ -258,8 +258,13 @@ void flashRom2(const char * url)
   }
 }
 
+#define FLASH_SUCCESS 0
+#define FLASH_FAIL_TOO_SMALL 1
+#define FLASH_FAIL_TOO_BIG 2
+#define FLASH_FAIL_WRONG_MAGIC 3
+
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
+int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
 {
   uint16_t erase_start = erase_sectior_start;
   uint32_t write_address = start_address;
@@ -274,7 +279,7 @@ bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uin
   if(httpCode != HTTP_CODE_OK)
   {
     Serial.println("Invalid response Code");
-    return false;
+    return httpCode;
   }
 
   //Length Check (at least one sector)
@@ -283,13 +288,13 @@ bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uin
   if(len < SECTOR_SIZE)
   {
     Serial.println("Length too short");
-    return false;
+    return FLASH_FAIL_TOO_SMALL;
   }
 
   if(len > (end_address-start_address))
   {
     Serial.println("Length exceeds flash size");
-    return false;
+    return FLASH_FAIL_TOO_BIG;
   }
 
   //Confirm magic byte
@@ -299,7 +304,7 @@ bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uin
   if(header[0] != magic)
   {
     Serial.println("Invalid magic byte");
-    return false;
+    return FLASH_FAIL_WRONG_MAGIC;
   }
 
   if(bootloader)
@@ -362,7 +367,7 @@ bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uin
     Serial.println("Done");
   }
 
-  return true;
+  return FLASH_SUCCESS;
 }
 
 
