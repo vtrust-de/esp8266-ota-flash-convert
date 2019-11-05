@@ -266,7 +266,6 @@ bool downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uin
   uint8_t header[4] = { 0 };
 
   client.begin(url);
-  client.useHTTP10(true);
   client.setTimeout(TIMEOUT);
 
   //Response Code Check
