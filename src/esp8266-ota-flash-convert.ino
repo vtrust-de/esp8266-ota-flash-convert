@@ -217,13 +217,6 @@ void connectToWiFiBlocking()
 
 void flashRom1(const char * url)
 {
-  // erase tasmota param area [244-253) and system params [253-256)
-  for (uint16_t i = 244; i < 256; i++)
-  {
-    ESP.flashEraseSector(i);
-    yield(); // reset watchdog
-  }
-
   bool result = downloadRomToFlash(
     1,                //Rom 1
     true,             //Bootloader is being updated
@@ -331,6 +324,13 @@ bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_ad
       write_address += SECTOR_SIZE;
       len -= SECTOR_SIZE;
       Serial.println("Done");
+
+      // erase tasmota param area [244-253) and system params [253-256)
+      for (uint16_t i = 244; i < 256; i++)
+      {
+        ESP.flashEraseSector(i);
+        yield(); // reset watchdog
+      }
     }
 
     Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_sector_end);
