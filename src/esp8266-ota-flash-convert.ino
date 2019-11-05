@@ -252,10 +252,6 @@ void flashRom2(const char * url)
     system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
     system_upgrade_reboot();
   }
-  else
-  {
-    ESP.restart();
-  }
 }
 
 #define FLASH_SUCCESS 0
