@@ -137,7 +137,7 @@ void handleFlash3(){
       customUrl = server.arg("url");
       url = customUrl.c_str();
     }
-    sprintf(buffer, "Device should flash %s and restart\n", url);
+    sprintf(buffer, "Device will attempt to flash %s and restart if successful\n", url);
     server.send(200, "text/plain", buffer);
     flashRom1(url);
   }
@@ -228,7 +228,10 @@ void flashRom1(const char * url)
     url               //URL
   );
 
-  ESP.restart(); //restart regardless of success
+  if(result)
+  {
+    ESP.restart();
+  }
 }
 
 //Download special rom.
