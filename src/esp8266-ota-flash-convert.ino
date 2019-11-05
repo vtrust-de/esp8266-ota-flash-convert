@@ -225,8 +225,7 @@ void flashRom1(const char * url)
     0x80000,          //Stop before 0x80000
     0,                //Erase Sector from 0 to
     128,              //Sector 128 (not inclusive)
-    url,              //URL
-    RETRY             //Retry Count
+    url               //URL
   );
 
   ESP.restart(); //restart regardless of success
@@ -244,8 +243,7 @@ void flashRom2(const char * url)
     0x100000,         //Stop before end of ram
     128,              //From middle of flash
     256,              //End of flash
-    url,              //URL
-    RETRY             //Retry Count
+    url               //URL
   );
   
   if(result)
@@ -260,118 +258,112 @@ void flashRom2(const char * url)
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url, uint8_t retry_limit)
+bool downloadRomToFlash(byte rom, byte bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
 {
-  uint8_t retry_counter = 0;
-  while(retry_counter++ < retry_limit)
+  uint16_t erase_start = erase_sectior_start;
+  uint32_t write_address = start_address;
+  uint8_t header[4] = { 0 };
+
+  Serial.printf("Flashing rom %d (retry:%d): %s\n", rom, retry_counter, url);
+  client.begin(url);
+  client.useHTTP10(true);
+  client.setTimeout(TIMEOUT);
+
+  //Response Code Check
+  uint16_t httpCode = client.GET();
+  Serial.printf("HTTP response Code: %d\n", httpCode);
+  if(httpCode != HTTP_CODE_OK)
   {
-    uint16_t erase_start = erase_sectior_start;
-    uint32_t write_address = start_address;
-    uint8_t header[4] = { 0 };
+    Serial.println("Invalid response Code - retry");
+    return false;
+  }
 
-    Serial.printf("Flashing rom %d (retry:%d): %s\n", rom, retry_counter, url);
-    client.begin(url);
-    client.useHTTP10(true);
-    client.setTimeout(TIMEOUT);
+  //Length Check (at least one sector)
+  uint32_t len = client.getSize();
+  Serial.printf("HTTP response length: %d\n", len);
+  if(len < SECTOR_SIZE)
+  {
+    Serial.println("Length too short - retry");
+    return false;
+  }
 
-    //Response Code Check
-    uint16_t httpCode = client.GET();
-    Serial.printf("HTTP response Code: %d\n", httpCode);
-    if(httpCode != HTTP_CODE_OK)
+  if(len > (end_address-start_address))
+  {
+    Serial.println("Length exceeds flash size - retry");
+    return false;
+  }
+
+  //Confirm magic byte
+  WiFiClient* stream = client.getStreamPtr();
+  stream->peekBytes(header,4);
+  Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
+  if(header[0] != magic)
+  {
+    Serial.println("Invalid magic byte - retry");
+    return false;
+  }
+
+  if(bootloader)
+  { 
+    Serial.printf("Downloading %d byte bootloader", sizeof(bootrom));
+    size_t size = stream->available();
+    while(size < sizeof(bootrom))
     {
-      Serial.println("Invalid response Code - retry");
-      continue;
+      Serial.print("."); yield(); // reset watchdog
+      size = stream->available();
     }
+    int c = stream->readBytes(bootrom, sizeof(bootrom));
 
-    //Length Check (at least one sector)
-    uint32_t len = client.getSize();
-    Serial.printf("HTTP response length: %d\n", len);
-    if(len < SECTOR_SIZE)
-    {
-      Serial.println("Length too short - retry");
-      continue;
-    }
+    //Skip the bootloader section for the moment..
+    erase_start++;
+    write_address += SECTOR_SIZE;
+    len -= SECTOR_SIZE;
+    Serial.println("Done");
 
-    if(len > (end_address-start_address))
-    {
-      Serial.println("Length exceeds flash size - retry");
-      continue;
-    }
-
-    //Confirm magic byte
-    WiFiClient* stream = client.getStreamPtr();
-    stream->peekBytes(header,4);
-    Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
-    if(header[0] != magic)
-    {
-      Serial.println("Invalid magic byte - retry");
-      continue;
-    }
-
-    if(bootloader)
-    { 
-      Serial.printf("Downloading %d byte bootloader", sizeof(bootrom));
-      size_t size = stream->available();
-      while(size < sizeof(bootrom))
-      {
-        Serial.print("."); yield(); // reset watchdog
-        size = stream->available();
-      }
-      int c = stream->readBytes(bootrom, sizeof(bootrom));
-
-      //Skip the bootloader section for the moment..
-      erase_start++;
-      write_address += SECTOR_SIZE;
-      len -= SECTOR_SIZE;
-      Serial.println("Done");
-
-      // erase tasmota param area [244-253) and system params [253-256)
-      for (uint16_t i = 244; i < 256; i++)
-      {
-        ESP.flashEraseSector(i);
-        yield(); // reset watchdog
-      }
-    }
-
-    Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_sector_end);
-    for (uint16_t i = erase_start; i < erase_sector_end; i++)
+    // erase tasmota param area [244-253) and system params [253-256)
+    for (uint16_t i = 244; i < 256; i++)
     {
       ESP.flashEraseSector(i);
-      Serial.print("."); yield(); // reset watchdog
-    }  
+      yield(); // reset watchdog
+    }
+  }
+
+  Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_sector_end);
+  for (uint16_t i = erase_start; i < erase_sector_end; i++)
+  {
+    ESP.flashEraseSector(i);
+    Serial.print("."); yield(); // reset watchdog
+  }  
+  Serial.println("Done");
+  
+  Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", write_address, write_address+len, sizeof(buffer));
+  while(len > 0)
+  {
+    size_t size = stream->available();
+    if(size >= sizeof(buffer) || size == len) 
+    {
+      int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
+      ESP.flashWrite(write_address, (uint32_t*)buffer, c);
+      write_address += c; // increment next write address
+      len -= c; // decrement remaining bytes
+    }
+    Serial.print("."); yield(); // reset watchdog
+  }
+  client.end();
+  Serial.println("Done");
+
+  if(bootloader)
+  {
+    Serial.println("Erasing bootloader sector 0");
+    ESP.flashEraseSector(0);
     Serial.println("Done");
     
-    Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", write_address, write_address+len, sizeof(buffer));
-    while(len > 0)
-    {
-      size_t size = stream->available();
-      if(size >= sizeof(buffer) || size == len) 
-      {
-        int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
-        ESP.flashWrite(write_address, (uint32_t*)buffer, c);
-        write_address += c; // increment next write address
-        len -= c; // decrement remaining bytes
-      }
-      Serial.print("."); yield(); // reset watchdog
-    }
-    client.end();
+    Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
+    ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE);
     Serial.println("Done");
-
-    if(bootloader)
-    {
-      Serial.println("Erasing bootloader sector 0");
-      ESP.flashEraseSector(0);
-      Serial.println("Done");
-      
-      Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
-      ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE);
-      Serial.println("Done");
-    }
-
-    return true;
   }
-  Serial.println("Retry counter exceeded - giving up");
-  return false;
+
+  return true;
 }
 
 
