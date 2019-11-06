@@ -13,6 +13,12 @@ extern "C" void system_upgrade_reboot (void);
 #define BUFFER_SIZE SECTOR_SIZE
 #define SPI_FLASH_ADDR 0x40200000
 
+#define FLASH_SUCCESS 0
+#define FLASH_FAIL_BAD_URI 1
+#define FLASH_FAIL_TOO_SMALL 2
+#define FLASH_FAIL_TOO_BIG 3
+#define FLASH_FAIL_WRONG_MAGIC 4
+
 #define VERSION "VTRUST-FLASH 1.2\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_PASSWORD "flashmeifyoucan"
@@ -21,8 +27,6 @@ extern "C" void system_upgrade_reboot (void);
 IPAddress ip(10, 42, 42, 42);
 IPAddress gateway(10, 42, 42, 42);   
 IPAddress subnet(255,255,255,0);   
-
-#define RETRY 3         //number of times to retry
 
 #define URL_ROM_2 "http://10.42.42.1/files/user2.bin"
 #define URL_ROM_3 "http://10.42.42.1/files/thirdparty.bin"
@@ -250,12 +254,6 @@ void flashRom2(const char * url)
     system_upgrade_reboot();
   }
 }
-
-#define FLASH_SUCCESS 0
-#define FLASH_FAIL_BAD_URI 1
-#define FLASH_FAIL_TOO_SMALL 2
-#define FLASH_FAIL_TOO_BIG 3
-#define FLASH_FAIL_WRONG_MAGIC 4
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
 int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
