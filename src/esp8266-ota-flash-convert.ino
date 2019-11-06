@@ -16,7 +16,6 @@ extern "C" void system_upgrade_reboot (void);
 
 #define VERSION "VTRUST-FLASH 1.2\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
-#define WIFI_PASSWORD "flashmeifyoucan"
 #define WIFI_APSSID "vtrust-recovery"
 
 IPAddress ip(10, 42, 42, 42);
@@ -190,7 +189,7 @@ void connectToWiFiBlocking()
   WiFi.mode(WIFI_OFF);
   WiFi.mode(WIFI_STA);
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(WIFI_SSID);
   WiFi.config(ip, gateway , subnet);   // subnet FF FF FF 00
 
   while (WiFi.status() != WL_CONNECTED)
