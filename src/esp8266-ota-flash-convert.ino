@@ -254,9 +254,10 @@ void flashRom2(const char * url)
 }
 
 #define FLASH_SUCCESS 0
-#define FLASH_FAIL_TOO_SMALL 1
-#define FLASH_FAIL_TOO_BIG 2
-#define FLASH_FAIL_WRONG_MAGIC 3
+#define FLASH_FAIL_BAD_URI 1
+#define FLASH_FAIL_TOO_SMALL 2
+#define FLASH_FAIL_TOO_BIG 3
+#define FLASH_FAIL_WRONG_MAGIC 4
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
 int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
@@ -265,7 +266,10 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
   uint32_t write_address = start_address;
   uint8_t header[4] = { 0 };
 
-  client.begin(url);
+  if(!client.begin(url))
+  {
+    return FLASH_FAIL_BAD_URI;
+  }
 
   //Response Code Check
   uint16_t httpCode = client.GET();
