@@ -260,9 +260,8 @@ void flashRom2(const char * url)
 #define FLASH_FAIL_WRONG_MAGIC 4
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_sectior_start, uint16_t erase_sector_end, const char * url)
+int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
 {
-  uint16_t erase_start = erase_sectior_start;
   uint32_t write_address = start_address;
   uint8_t header[4] = { 0 };
 
@@ -330,8 +329,8 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
     }
   }
 
-  Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_sector_end);
-  for (uint16_t i = erase_start; i < erase_sector_end; i++)
+  Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_end);
+  for (uint16_t i = erase_start; i < erase_end; i++)
   {
     ESP.flashEraseSector(i);
     Serial.print("."); yield(); // reset watchdog
