@@ -228,14 +228,13 @@ void flashRom1(const char * url)
 
   if(!result)
   {
-    ESP.restart();
+    system_upgrade_reboot();
   }
 }
 
 //Download special rom.
 void flashRom2(const char * url)
 {
-  system_upgrade_flag_set(UPGRADE_FLAG_START);
   int result = downloadRomToFlash(
     false,            //Bootloader is not being updated
     0xEA,             //V2 Espressif Magic
@@ -248,7 +247,6 @@ void flashRom2(const char * url)
   
   if(!result)
   {
-    system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
     system_upgrade_reboot();
   }
 }
@@ -262,6 +260,8 @@ void flashRom2(const char * url)
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
 int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
 {
+  system_upgrade_flag_set(UPGRADE_FLAG_START);
+
   if(!client.begin(url))
   {
     return FLASH_FAIL_BAD_URI;
@@ -357,6 +357,7 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     }
   }
 
+  system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
   return FLASH_SUCCESS;
 }
 
