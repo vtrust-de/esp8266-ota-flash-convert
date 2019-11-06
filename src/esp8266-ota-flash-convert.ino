@@ -260,7 +260,7 @@ void flashRom2(const char * url)
 #define FLASH_FAIL_WRONG_MAGIC 4
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
+int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
 {
   if(!client.begin(url))
   {
@@ -293,10 +293,10 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
 
   //Confirm magic byte
   WiFiClient* stream = client.getStreamPtr();
-  uint8_t header[4] = { 0 };
-  stream->peekBytes(header,4);
-  Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
-  if(header[0] != magic)
+  char header;
+  stream->peekBytes(&header, 1);
+  Serial.printf("Magic byte from stream: 0x%02X\n", header);
+  if(header != magic)
   {
     Serial.println("Invalid magic byte");
     return FLASH_FAIL_WRONG_MAGIC;
