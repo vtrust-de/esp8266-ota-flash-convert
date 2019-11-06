@@ -29,7 +29,6 @@ IPAddress subnet(255,255,255,0);
 
 ESP8266WebServer server(80);
 HTTPClient client;
-//char responseBuffer[282]; // total + 1 (for null terminal)
 
 char buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
 char bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
