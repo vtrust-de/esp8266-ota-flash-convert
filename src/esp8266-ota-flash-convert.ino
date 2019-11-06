@@ -317,13 +317,6 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     start_address += SECTOR_SIZE;
     len -= SECTOR_SIZE;
     Serial.println("Done");
-
-    // erase tasmota param area [244-253) and system params [253-256)
-    for (uint16_t i = 244; i < 256; i++)
-    {
-      ESP.flashEraseSector(i);
-      yield(); // reset watchdog
-    }
   }
 
   Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_end);
@@ -359,6 +352,13 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
     ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE);
     Serial.println("Done");
+
+    // erase tasmota param area [244-253) and system params [253-256)
+    for (uint16_t i = 244; i < 256; i++)
+    {
+      ESP.flashEraseSector(i);
+      yield(); // reset watchdog
+    }
   }
 
   return FLASH_SUCCESS;
