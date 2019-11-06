@@ -221,7 +221,7 @@ void flashRom1(const char * url)
     0xE9,             //Standard Arduino Magic
     0x00000,          //Write to 0x0 since we are replacing the bootloader
     0x80000,          //Stop before 0x80000
-    0,                //Erase Sector from 0 to
+    1,                //Erase Sector from 1 to
     128,              //Sector 128 (not inclusive)
     url               //URL
   );
@@ -262,9 +262,6 @@ void flashRom2(const char * url)
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
 int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
 {
-  uint32_t write_address = start_address;
-  uint8_t header[4] = { 0 };
-
   if(!client.begin(url))
   {
     return FLASH_FAIL_BAD_URI;
@@ -296,6 +293,7 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
 
   //Confirm magic byte
   WiFiClient* stream = client.getStreamPtr();
+  uint8_t header[4] = { 0 };
   stream->peekBytes(header,4);
   Serial.printf("Magic byte from stream: 0x%02X\n", header[0]);
   if(header[0] != magic)
@@ -316,8 +314,7 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
     int c = stream->readBytes(bootrom, sizeof(bootrom));
 
     //Skip the bootloader section for the moment..
-    erase_start++;
-    write_address += SECTOR_SIZE;
+    start_address += SECTOR_SIZE;
     len -= SECTOR_SIZE;
     Serial.println("Done");
 
@@ -337,15 +334,15 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
   }  
   Serial.println("Done");
   
-  Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", write_address, write_address+len, sizeof(buffer));
+  Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", start_address, start_address+len, sizeof(buffer));
   while(len > 0)
   {
     size_t size = stream->available();
     if(size >= sizeof(buffer) || size == len) 
     {
       int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
-      ESP.flashWrite(write_address, (uint32_t*)buffer, c);
-      write_address += c; // increment next write address
+      ESP.flashWrite(start_address, (uint32_t*)buffer, c);
+      start_address += c; // increment next write address
       len -= c; // decrement remaining bytes
     }
     Serial.print("."); yield(); // reset watchdog
