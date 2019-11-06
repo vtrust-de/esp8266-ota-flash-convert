@@ -268,7 +268,7 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
   }
 
   //Response Code Check
-  uint16_t httpCode = client.GET();
+  int httpCode = client.GET();
   Serial.printf("HTTP response Code: %d\n", httpCode);
   if(httpCode != HTTP_CODE_OK)
   {
@@ -277,7 +277,7 @@ int downloadRomToFlash(bool bootloader, byte magic, uint32_t start_address, uint
   }
 
   //Length Check (at least one sector)
-  uint32_t len = client.getSize();
+  int len = client.getSize();
   Serial.printf("HTTP response length: %d\n", len);
   if(len < SECTOR_SIZE)
   {
