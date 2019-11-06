@@ -19,7 +19,7 @@ extern "C" void system_upgrade_reboot (void);
 #define FLASH_FAIL_TOO_BIG 3
 #define FLASH_FAIL_WRONG_MAGIC 4
 
-#define VERSION "VTRUST-FLASH 1.2\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
+#define VERSION "VTRUST-FLASH 1.3\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_APSSID "vtrust-recovery"
 
