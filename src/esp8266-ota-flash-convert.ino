@@ -117,9 +117,28 @@ void handleFlash2(){
       customUrl = server.arg("url");
       url = customUrl.c_str();
     }
-    sprintf(buffer, "Device should flash %s to userspace 0x81000 and restart\n", url);
-    server.send(200, "text/plain", buffer);
-    flashRom2(url);
+
+    uint32_t flash_time = millis();
+    int result = downloadRomToFlash(
+      false,            //Bootloader is not being updated
+      0xEA,             //V2 Espressif Magic
+      0x081000,         //Not replacing bootloader
+      0x100000,         //Stop before end of ram
+      128,              //From middle of flash
+      256,              //End of flash
+      url               //URL
+    );
+    flash_time = millis() - flash_time;
+
+    if(result) {
+      sprintf(buffer, "Flashing %s to userspace 2 failed after %dms, error code %d\n", url, flash_time, result);
+      server.send(200, "text/plain", buffer);
+    } else {
+      sprintf(buffer, "Flashed %s to userspace 2 successfully in %dms, rebooting...\n", url, flash_time);
+      server.send(200, "text/plain", buffer);
+
+      system_upgrade_reboot();
+    }
   }
 }
 
@@ -140,9 +159,28 @@ void handleFlash3(){
       customUrl = server.arg("url");
       url = customUrl.c_str();
     }
-    sprintf(buffer, "Device will attempt to flash %s and restart if successful\n", url);
-    server.send(200, "text/plain", buffer);
-    flashRom1(url);
+
+    uint32_t flash_time = millis();
+    int result = downloadRomToFlash(
+      true,             //Bootloader is being updated
+      0xE9,             //Standard Arduino Magic
+      0x00000,          //Write to 0x0 since we are replacing the bootloader
+      0x80000,          //Stop before 0x80000
+      1,                //Erase Sector from 1 to
+      128,              //Sector 128 (not inclusive)
+      url               //URL
+    );
+    flash_time = millis() - flash_time;
+
+    if(result) {
+      sprintf(buffer, "Flashing %s to userspace 1 failed after %dms, error code %d\n", url, flash_time, result);
+      server.send(200, "text/plain", buffer);
+    } else {
+      sprintf(buffer, "Flashed %s to userspace 1 successfully in %dms, rebooting...\n", url, flash_time);
+      server.send(200, "text/plain", buffer);
+
+      system_upgrade_reboot();
+    }
   }
   else
   {
@@ -214,45 +252,6 @@ void connectToWiFiBlocking()
     }
   }
   Serial.printf("\nConnected to %s as %s\n", WIFI_SSID, WiFi.localIP().toString().c_str());
-}
-
-
-
-void flashRom1(const char * url)
-{
-  int result = downloadRomToFlash(
-    true,             //Bootloader is being updated
-    0xE9,             //Standard Arduino Magic
-    0x00000,          //Write to 0x0 since we are replacing the bootloader
-    0x80000,          //Stop before 0x80000
-    1,                //Erase Sector from 1 to
-    128,              //Sector 128 (not inclusive)
-    url               //URL
-  );
-
-  if(!result)
-  {
-    system_upgrade_reboot();
-  }
-}
-
-//Download special rom.
-void flashRom2(const char * url)
-{
-  int result = downloadRomToFlash(
-    false,            //Bootloader is not being updated
-    0xEA,             //V2 Espressif Magic
-    0x081000,         //Not replacing bootloader
-    0x100000,         //Stop before end of ram
-    128,              //From middle of flash
-    256,              //End of flash
-    url               //URL
-  );
-  
-  if(!result)
-  {
-    system_upgrade_reboot();
-  }
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
