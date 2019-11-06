@@ -96,10 +96,6 @@ void handleRoot() {
   server.send(200, "text/plain", buffer);
 }
 
-void handleNotFound(){
-  server.send(404, "text/plain", "File Not Found\n");
-}
-
 void handleFlash2(){
   if (userspace)
   {
@@ -161,7 +157,6 @@ void setup_webserver(void){
   server.on("/flash3", handleFlash3);
   server.on("/undo", handleUndo);
   server.on("/backup", handleRead);
-  server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
 }
