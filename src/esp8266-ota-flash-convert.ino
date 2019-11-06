@@ -131,10 +131,10 @@ void handleFlash2(){
     flash_time = millis() - flash_time;
 
     if(result) {
-      sprintf(buffer, "Flashing %s to userspace 2 failed after %dms, error code %d\n", url, flash_time, result);
+      sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url, 2 - userspace, flash_time, result);
       server.send(200, "text/plain", buffer);
     } else {
-      sprintf(buffer, "Flashed %s to userspace 2 successfully in %dms, rebooting...\n", url, flash_time);
+      sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url, 2 - userspace, flash_time);
       server.send(200, "text/plain", buffer);
 
       system_upgrade_reboot();
@@ -173,10 +173,10 @@ void handleFlash3(){
     flash_time = millis() - flash_time;
 
     if(result) {
-      sprintf(buffer, "Flashing %s to userspace 1 failed after %dms, error code %d\n", url, flash_time, result);
+      sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url, 2 - userspace, flash_time, result);
       server.send(200, "text/plain", buffer);
     } else {
-      sprintf(buffer, "Flashed %s to userspace 1 successfully in %dms, rebooting...\n", url, flash_time);
+      sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url, 2 - userspace, flash_time);
       server.send(200, "text/plain", buffer);
 
       system_upgrade_reboot();
