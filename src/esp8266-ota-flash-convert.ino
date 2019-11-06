@@ -305,17 +305,13 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   if(bootloader)
   { 
     Serial.printf("Downloading %d byte bootloader", sizeof(bootrom));
-    size_t size = stream->available();
-    while(size < sizeof(bootrom))
+    while(stream->available() < sizeof(bootrom))
     {
       Serial.print("."); yield(); // reset watchdog
-      size = stream->available();
     }
     int c = stream->readBytes(bootrom, sizeof(bootrom));
-
-    //Skip the bootloader section for the moment..
-    start_address += SECTOR_SIZE;
-    len -= SECTOR_SIZE;
+    start_address += c; // increment next write address
+    len -= c; // decrement remaining bytes
     Serial.println("Done");
   }
 
