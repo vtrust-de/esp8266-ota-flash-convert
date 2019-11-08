@@ -258,29 +258,21 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   system_upgrade_flag_set(UPGRADE_FLAG_START);
 
   if(!client.begin(url))
-  {
     return FLASH_FAIL_BAD_URI;
-  }
 
   //Response Code Check
   int httpCode = client.GET();
   if(httpCode != HTTP_CODE_OK)
-  {
     return httpCode;
-  }
 
   //Length Check (at least one sector)
   int len = client.getSize();
   Serial.printf("HTTP response length: %d\n", len);
   if(len < SECTOR_SIZE)
-  {
     return FLASH_FAIL_TOO_SMALL;
-  }
 
   if(len > (end_address-start_address))
-  {
     return FLASH_FAIL_TOO_BIG;
-  }
 
   //Confirm magic byte
   WiFiClient* stream = client.getStreamPtr();
@@ -288,9 +280,7 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   stream->peekBytes(&header, 1);
   Serial.printf("Magic byte from stream: 0x%02X\n", header);
   if(header != magic)
-  {
     return FLASH_FAIL_WRONG_MAGIC;
-  }
 
   if(bootloader)
   { 
@@ -308,9 +298,8 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   for (uint16_t i = erase_start; i < erase_end; i++)
   {
     if(!ESP.flashEraseSector(i))
-    {
       return FLASH_FAIL_BAD_ERASE;
-    }
+
     Serial.print("."); yield(); // reset watchdog
   }
   
@@ -322,9 +311,8 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     {
       int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
       if(!ESP.flashWrite(start_address, (uint32_t*)buffer, c))
-      {
         return FLASH_FAIL_BAD_WRITE;
-      }
+
       start_address += c; // increment next write address
       len -= c; // decrement remaining bytes
     }
@@ -337,21 +325,16 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   {
     Serial.println("Erasing bootloader sector 0");
     if(!ESP.flashEraseSector(0))
-    {
       return FLASH_FAIL_BOOTROM_ERASE;
-    }
-    
+
     Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
     if(!ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE))
-    {
       return FLASH_FAIL_BOOTROM_WRITE;
-    }
+
     Serial.println("Done");
 
     if(!ESP.eraseConfig())
-    {
       return FLASH_FAIL_CONFIG_ERASE;
-    }
   }
 
   system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
