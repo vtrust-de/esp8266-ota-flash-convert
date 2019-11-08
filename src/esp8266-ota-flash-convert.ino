@@ -264,10 +264,8 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
 
   //Response Code Check
   int httpCode = client.GET();
-  Serial.printf("HTTP response Code: %d\n", httpCode);
   if(httpCode != HTTP_CODE_OK)
   {
-    Serial.println("Invalid response Code");
     return httpCode;
   }
 
@@ -276,13 +274,11 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   Serial.printf("HTTP response length: %d\n", len);
   if(len < SECTOR_SIZE)
   {
-    Serial.println("Length too short");
     return FLASH_FAIL_TOO_SMALL;
   }
 
   if(len > (end_address-start_address))
   {
-    Serial.println("Length exceeds flash size");
     return FLASH_FAIL_TOO_BIG;
   }
 
@@ -293,7 +289,6 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   Serial.printf("Magic byte from stream: 0x%02X\n", header);
   if(header != magic)
   {
-    Serial.println("Invalid magic byte");
     return FLASH_FAIL_WRONG_MAGIC;
   }
 
@@ -307,7 +302,6 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     int c = stream->readBytes(bootrom, sizeof(bootrom));
     start_address += c; // increment next write address
     len -= c; // decrement remaining bytes
-    Serial.println("Done");
   }
 
   Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_end);
@@ -318,8 +312,7 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
       return FLASH_FAIL_BAD_ERASE;
     }
     Serial.print("."); yield(); // reset watchdog
-  }  
-  Serial.println("Done");
+  }
   
   Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", start_address, start_address+len, sizeof(buffer));
   while(len > 0)
@@ -347,7 +340,6 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     {
       return FLASH_FAIL_BOOTROM_ERASE;
     }
-    Serial.println("Done");
     
     Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
     if(!ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE))
