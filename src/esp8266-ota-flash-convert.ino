@@ -22,6 +22,7 @@ extern "C" void system_upgrade_reboot (void);
 #define FLASH_FAIL_BAD_WRITE 6
 #define FLASH_FAIL_BOOTROM_ERASE 7
 #define FLASH_FAIL_BOOTROM_WRITE 8
+#define FLASH_FAIL_CONFIG_ERASE 9
 
 #define VERSION "VTRUST-FLASH 1.3\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
@@ -355,11 +356,9 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     }
     Serial.println("Done");
 
-    // erase tasmota param area [244-253) and system params [253-256)
-    for (uint16_t i = 244; i < 256; i++)
+    if(!ESP.eraseConfig())
     {
-      ESP.flashEraseSector(i);
-      yield(); // reset watchdog
+      return FLASH_FAIL_CONFIG_ERASE;
     }
   }
 
