@@ -18,6 +18,10 @@ extern "C" void system_upgrade_reboot (void);
 #define FLASH_FAIL_TOO_SMALL 2
 #define FLASH_FAIL_TOO_BIG 3
 #define FLASH_FAIL_WRONG_MAGIC 4
+#define FLASH_FAIL_BAD_ERASE 5
+#define FLASH_FAIL_BAD_WRITE 6
+#define FLASH_FAIL_BOOTROM_ERASE 7
+#define FLASH_FAIL_BOOTROM_WRITE 8
 
 #define VERSION "VTRUST-FLASH 1.3\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
@@ -308,7 +312,10 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_end);
   for (uint16_t i = erase_start; i < erase_end; i++)
   {
-    ESP.flashEraseSector(i);
+    if(!ESP.flashEraseSector(i))
+    {
+      return FLASH_FAIL_BAD_ERASE;
+    }
     Serial.print("."); yield(); // reset watchdog
   }  
   Serial.println("Done");
@@ -320,7 +327,10 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     if(size >= sizeof(buffer) || size == len) 
     {
       int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
-      ESP.flashWrite(start_address, (uint32_t*)buffer, c);
+      if(!ESP.flashWrite(start_address, (uint32_t*)buffer, c))
+      {
+        return FLASH_FAIL_BAD_WRITE;
+      }
       start_address += c; // increment next write address
       len -= c; // decrement remaining bytes
     }
@@ -332,11 +342,17 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
   if(bootloader)
   {
     Serial.println("Erasing bootloader sector 0");
-    ESP.flashEraseSector(0);
+    if(!ESP.flashEraseSector(0))
+    {
+      return FLASH_FAIL_BOOTROM_ERASE;
+    }
     Serial.println("Done");
     
     Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
-    ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE);
+    if(!ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE))
+    {
+      return FLASH_FAIL_BOOTROM_WRITE;
+    }
     Serial.println("Done");
 
     // erase tasmota param area [244-253) and system params [253-256)
