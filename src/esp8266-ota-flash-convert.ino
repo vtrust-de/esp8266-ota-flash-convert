@@ -123,8 +123,6 @@ void handleFlash2(){
       0xEA,             //V2 Espressif Magic
       0x081000,         //Not replacing bootloader
       0x100000,         //Stop before end of ram
-      128,              //From middle of flash
-      256,              //End of flash
       url               //URL
     );
     flash_time = millis() - flash_time;
@@ -165,8 +163,6 @@ void handleFlash3(){
       0xE9,             //Standard Arduino Magic
       0x00000,          //Write to 0x0 since we are replacing the bootloader
       0x80000,          //Stop before 0x80000
-      1,                //Erase Sector from 1 to
-      128,              //Sector 128 (not inclusive)
       url               //URL
     );
     flash_time = millis() - flash_time;
@@ -253,7 +249,7 @@ void connectToWiFiBlocking()
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
+int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, const char * url)
 {
   system_upgrade_flag_set(UPGRADE_FLAG_START);
 
@@ -294,8 +290,8 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     len -= c; // decrement remaining bytes
   }
 
-  Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_end);
-  for (uint16_t i = erase_start; i < erase_end; i++)
+  Serial.printf("Erasing flash sectors %d-%d", start_address >> 12, end_address >> 12);
+  for (uint16_t i = start_address >> 12; i < end_address >> 12; i++)
   {
     if(!ESP.flashEraseSector(i))
       return FLASH_FAIL_BAD_ERASE;
