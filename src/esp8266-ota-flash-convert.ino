@@ -49,7 +49,7 @@ void handleRoot() {
 
   // get flash info; size, mode, and speed
   uint32_t flashInfo;
-  ESP.flashRead(0, (uint32_t *)&flashInfo, 4);
+  ESP.flashRead(0, &flashInfo, 4);
 
   const char * FlashSize = "";
   switch((flashInfo >> 28) & 0xF){
@@ -126,6 +126,7 @@ void handleFlash(){
       url               //URL
     );
   }
+  client.end();
   flash_time = millis() - flash_time;
 
   if (result) {
@@ -275,7 +276,6 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     }
     Serial.print("."); yield(); // reset watchdog
   }
-  client.end();
   Serial.println("Done");
 
   if(bootloader)
