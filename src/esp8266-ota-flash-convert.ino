@@ -251,15 +251,6 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     start_address += c; // increment next write address
     len -= c; // decrement remaining bytes
   }
-
-  Serial.printf("Erasing flash sectors %d-%d", start_address >> 12, end_address >> 12);
-  for (uint16_t i = start_address >> 12; i < end_address >> 12; i++)
-  {
-    if(!ESP.flashEraseSector(i))
-      return FLASH_FAIL_BAD_ERASE;
-
-    Serial.print("."); yield(); // reset watchdog
-  }
   
   Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", start_address, start_address+len, sizeof(buffer));
   while(len > 0)
@@ -268,6 +259,8 @@ int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint
     if(size >= sizeof(buffer) || size == len) 
     {
       int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
+      if(!ESP.flashEraseSector(start_address >> 12))
+        return FLASH_FAIL_BAD_ERASE;
       if(!ESP.flashWrite(start_address, (uint32_t*)buffer, c))
         return FLASH_FAIL_BAD_WRITE;
 
