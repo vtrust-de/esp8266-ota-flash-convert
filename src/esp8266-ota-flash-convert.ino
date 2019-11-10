@@ -102,40 +102,40 @@ void handleRoot() {
   server.send(200, "text/plain", buffer);
 }
 
-void handleFlash2(){
-  if (userspace)
-  {
-    server.send(200, "text/plain", "Device is already booting from userspace 2 (0x81000)\n");
-    return;
-  }
-  else
-  {
-    const char * url = URL_ROM_2;
-    String customUrl;
-    if (server.hasArg("url")) {
-      customUrl = server.arg("url");
-      url = customUrl.c_str();
-    }
+void handleFlash(){
+  String url;
+  int result;
 
-    uint32_t flash_time = millis();
-    int result = downloadRomToFlash(
+  uint32_t flash_time = millis();
+  if (userspace) {
+    url = server.hasArg("url") ? server.arg("url") : URL_ROM_3;
+    result = downloadRomToFlash(
+      true,             //Bootloader is being updated
+      0xE9,             //Standard Arduino Magic
+      0x00000,          //Write to 0x0 since we are replacing the bootloader
+      0x80000,          //Stop before 0x80000
+      url               //URL
+    );
+  } else {
+    url = URL_ROM_2;
+    result = downloadRomToFlash(
       false,            //Bootloader is not being updated
       0xEA,             //V2 Espressif Magic
       0x081000,         //Not replacing bootloader
       0x100000,         //Stop before end of ram
       url               //URL
     );
-    flash_time = millis() - flash_time;
+  }
+  flash_time = millis() - flash_time;
 
-    if(result) {
-      sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url, 2 - userspace, flash_time, result);
-      server.send(200, "text/plain", buffer);
-    } else {
-      sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url, 2 - userspace, flash_time);
-      server.send(200, "text/plain", buffer);
+  if (result) {
+    sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url.c_str(), 2 - userspace, flash_time, result);
+    server.send(200, "text/plain", buffer);
+  } else {
+    sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url.c_str(), 2 - userspace, flash_time);
+    server.send(200, "text/plain", buffer);
 
-      system_upgrade_reboot();
-    }
+    system_upgrade_reboot();
   }
 }
 
@@ -147,44 +147,6 @@ void handleUndo(){
   system_upgrade_reboot();
 }
 
-void handleFlash3(){
-  if (userspace)
-  {
-    const char * url = URL_ROM_3;
-    String customUrl;
-    if (server.hasArg("url")) {
-      customUrl = server.arg("url");
-      url = customUrl.c_str();
-    }
-
-    uint32_t flash_time = millis();
-    int result = downloadRomToFlash(
-      true,             //Bootloader is being updated
-      0xE9,             //Standard Arduino Magic
-      0x00000,          //Write to 0x0 since we are replacing the bootloader
-      0x80000,          //Stop before 0x80000
-      url               //URL
-    );
-    flash_time = millis() - flash_time;
-
-    if(result) {
-      sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url, 2 - userspace, flash_time, result);
-      server.send(200, "text/plain", buffer);
-    } else {
-      sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url, 2 - userspace, flash_time);
-      server.send(200, "text/plain", buffer);
-
-      system_upgrade_reboot();
-    }
-  }
-  else
-  {
-    server.send(200, "text/plain", "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n");
-    return;
-  }
-}
-
-
 void handleRead(){
   sprintf(buffer, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
   server.sendHeader("Content-Disposition", buffer);
@@ -193,8 +155,7 @@ void handleRead(){
 
 void setup_webserver(void){
   server.on("/", handleRoot);
-  server.on("/flash2", handleFlash2);
-  server.on("/flash3", handleFlash3);
+  server.on("/flash", handleFlash);
   server.on("/undo", handleUndo);
   server.on("/backup", handleRead);
   server.begin();
@@ -249,7 +210,7 @@ void connectToWiFiBlocking()
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, const char * url)
+int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, String &url)
 {
   system_upgrade_flag_set(UPGRADE_FLAG_START);
 
