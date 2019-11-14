@@ -6,12 +6,10 @@ extern "C" uint8_t system_upgrade_userbin_check();
 extern "C" void system_upgrade_flag_set(uint8 flag);
 extern "C" void system_upgrade_reboot (void);
 
-#define MAGIC_V1 0xE9
-#define MAGIC_V2 0xEA
 #define UPGRADE_FLAG_START 0x01
 #define UPGRADE_FLAG_FINISH 0x02
-#define SECTOR_SIZE 4096
-#define BUFFER_SIZE SECTOR_SIZE
+#define SECTOR_SIZE 0x1000
+#define MAX_FILE_SIZE 0x80000
 #define SPI_FLASH_ADDR 0x40200000
 
 #define FLASH_SUCCESS 0
@@ -24,6 +22,19 @@ extern "C" void system_upgrade_reboot (void);
 #define FLASH_FAIL_BOOTROM_ERASE 7
 #define FLASH_FAIL_BOOTROM_WRITE 8
 #define FLASH_FAIL_CONFIG_ERASE 9
+
+const char * FLASH_ERROR_CODES[] = {
+  "success",
+  "bad URI",
+  "too small",
+  "too big",
+  "wrong magic",
+  "erase failed",
+  "write failed",
+  "bootrom erase failed (very bad)",
+  "bootrom write failed (very, very bad)",
+  "config erase failed"
+};
 
 #define VERSION "VTRUST-FLASH 1.3\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
@@ -38,7 +49,7 @@ IPAddress subnet(255,255,255,0);
 ESP8266WebServer server(80);
 HTTPClient client;
 
-char buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
+char buffer[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 char bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
 uint8_t userspace = system_upgrade_userbin_check();
@@ -113,10 +124,13 @@ void handleFlash(){
   flash_time = millis() - flash_time;
 
   if (result) {
-    sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url.c_str(), 2 - userspace, flash_time, result);
+    if (result > FLASH_FAIL_CONFIG_ERASE || result < 0)
+      sprintf(buffer, "Flashing %s failed after %dms, HTTP %d\n", url.c_str(), flash_time, result);
+    else
+      sprintf(buffer, "Flashing %s failed after %dms, %s\n", url.c_str(), flash_time, FLASH_ERROR_CODES[result]);
     server.send(200, "text/plain", buffer);
   } else {
-    sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url.c_str(), 2 - userspace, flash_time);
+    sprintf(buffer, "Flashed %s successfully in %dms, rebooting...\n", url.c_str(), flash_time);
     server.send(200, "text/plain", buffer);
 
     ESP.restart();
