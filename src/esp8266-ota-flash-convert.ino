@@ -36,7 +36,7 @@ const char * FLASH_ERROR_CODES[] = {
   "config erase failed"
 };
 
-#define VERSION "VTRUST-FLASH 1.3\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
+#define VERSION "VTRUST-FLASH 1.4\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_APSSID "vtrust-recovery"
 
