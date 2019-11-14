@@ -52,7 +52,16 @@ HTTPClient client;
 char buffer[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 char bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
-uint8_t userspace = system_upgrade_userbin_check();
+#ifdef USER1
+#warning userspace defined as 0
+const uint8_t userspace = 0;
+#elif USER2
+#warning userspace defined as 1
+const uint8_t userspace = 1;
+#else
+#warning userspace defined at runtime
+const uint8_t userspace = system_upgrade_userbin_check();
+#endif
 
 void handleRoot() {
   // print WiFi diagonistics to Serial
