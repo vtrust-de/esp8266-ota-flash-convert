@@ -7,8 +7,8 @@ extern "C" void system_upgrade_reboot (void);
 
 #define UPGRADE_FLAG_START 0x01
 #define UPGRADE_FLAG_FINISH 0x02
-#define SECTOR_SIZE 4096
-#define BUFFER_SIZE SECTOR_SIZE
+#define SECTOR_SIZE 0x1000
+#define MAX_FILE_SIZE 0x80000
 #define SPI_FLASH_ADDR 0x40200000
 
 #define FLASH_SUCCESS 0
@@ -36,7 +36,7 @@ IPAddress subnet(255,255,255,0);
 ESP8266WebServer server(80);
 HTTPClient client;
 
-char buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
+char buffer[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 char bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
 uint8_t userspace = system_upgrade_userbin_check();
