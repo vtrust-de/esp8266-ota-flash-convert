@@ -127,7 +127,7 @@ void handleFlash(){
   String url = server.hasArg("url") ? server.arg("url") : ROM_URL;
   // we can't flash over the currently running program
   // determine where to place the new rom based on which userspace we're in
-  int result = downloadRomToFlash(userspace ? 0x00000 : 0x80000 - 0x5000, url);
+  int result = downloadRomToFlash(userspace ? 0x00000 : 0x80000 - 0x5000, url, !server.hasArg("override"));
   // clean up the HTTPClient after use, regardless of result
   client.end();
   flash_time = millis() - flash_time;
@@ -217,7 +217,7 @@ void connectToWiFiBlocking()
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-int downloadRomToFlash(const uint32_t start_address, const String &url){
+int downloadRomToFlash(const uint32_t start_address, const String &url, bool preserve_flash_settings){
   if(!client.begin(url))
     return FLASH_FAIL_BAD_URI;
 
@@ -248,7 +248,20 @@ int downloadRomToFlash(const uint32_t start_address, const String &url){
   }
   Serial.println();
   stream->readBytes(bootrom, sizeof(bootrom));
-  
+
+  if(preserve_flash_settings){
+    // preserve existing flash settings by overwriting bytes [2,3) in the new rom
+    // get flash info; size, mode, and speed
+    uint32_t flashInfo;
+    uint8_t * flashBytes = (uint8_t *) &flashInfo;
+    ESP.flashRead(0, &flashInfo, 4);
+    Serial.printf("Have %02X%02X, got %02X%02X\n", flashBytes[2], flashBytes[3], bootrom[2], bootrom[3]);
+    // flash mode
+    bootrom[2] = flashBytes[2];
+    // flash size and speed
+    bootrom[3] = flashBytes[3];
+  }
+
   // we do not want to overwrite the bootrom just yet
   // only write the first sector if start_address > 0
   if(start_address){
