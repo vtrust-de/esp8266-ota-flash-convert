@@ -5,8 +5,6 @@ extern "C" uint8_t system_upgrade_userbin_check();
 extern "C" void system_upgrade_flag_set(uint8 flag);
 extern "C" void system_upgrade_reboot (void);
 
-#define MAGIC_V1 0xE9
-#define MAGIC_V2 0xEA
 #define UPGRADE_FLAG_START 0x01
 #define UPGRADE_FLAG_FINISH 0x02
 #define SECTOR_SIZE 4096
