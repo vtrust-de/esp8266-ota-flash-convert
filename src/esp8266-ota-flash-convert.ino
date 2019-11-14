@@ -1,8 +1,12 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
+
+#ifndef USER2
 #include <eboot_command.h>
 #include "eboot_bin.h"
+#endif
+
 extern "C" uint8_t system_upgrade_userbin_check();
 extern "C" void system_upgrade_flag_set(uint8 flag);
 extern "C" void system_upgrade_reboot (void);
@@ -262,12 +266,15 @@ int downloadRomToFlash(const uint32_t start_address, const String &url, bool pre
     // flash size and speed
     bootrom[3] = flashBytes[3];
     // if not installing to the first sector, we're going to use the built in eboot rom
+#ifndef USER2
     if(start_address){
       eboot_bin[2] = flashBytes[2];
       eboot_bin[3] = flashBytes[3];
     }
+#endif
   }
 
+#ifndef USER2
   // we do not want to overwrite the bootrom just yet
   // only write the first sector if start_address > 0
   if(start_address){
@@ -276,6 +283,7 @@ int downloadRomToFlash(const uint32_t start_address, const String &url, bool pre
     if(!ESP.flashWrite(start_address, (uint32_t*)bootrom, SECTOR_SIZE))
       return FLASH_FAIL_BAD_WRITE;
   }
+#endif
 
   uint32_t write_address = start_address + SECTOR_SIZE;
   int remaining = fileSize - SECTOR_SIZE;
@@ -309,6 +317,7 @@ int downloadRomToFlash(const uint32_t start_address, const String &url, bool pre
     return FLASH_FAIL_BOOTROM_ERASE;
 
   if(start_address) {
+#ifndef USER2
     // if the firmware was written anywhere but 0, use the built in arduino eboot
     if(!ESP.flashWrite(0, (uint32_t*) eboot_bin, eboot_bin_len))
       return FLASH_FAIL_BOOTROM_WRITE;
@@ -320,10 +329,13 @@ int downloadRomToFlash(const uint32_t start_address, const String &url, bool pre
     ebcmd.args[1] = 0x00000;
     ebcmd.args[2] = fileSize;
     eboot_command_write(&ebcmd);
+#endif
   } else {
+#ifndef USER1
     // install the uploaded bootrom
     if(!ESP.flashWrite(0, (uint32_t*) bootrom, SECTOR_SIZE))
       return FLASH_FAIL_BOOTROM_WRITE;
+#endif
   }
 
   return FLASH_SUCCESS;
