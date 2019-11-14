@@ -307,8 +307,15 @@ int downloadRomToFlash(const uint32_t start_address, const String &url, bool pre
   Serial.println();
 
   // clearing system param area helps avoid issues in your thirdparty firmware
-  if(!ESP.eraseConfig())
-    return FLASH_FAIL_CONFIG_ERASE;
+  // system params [253,256)
+  // rf data [251,253)
+  // rtos params [247,256)
+  // tasmota settings [244,253)
+  for (uint16_t i = 244; i < 256; i++){
+    if(!ESP.flashEraseSector(i))
+      return FLASH_FAIL_CONFIG_ERASE;
+    yield(); // reset watchdog
+  }
 
   // now that we have gotten this far without failure we can write the bootrom
   // we do this at 0 regardless of start_address
