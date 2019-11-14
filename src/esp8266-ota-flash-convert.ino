@@ -63,14 +63,13 @@ const uint8_t userspace = 1;
 const uint8_t userspace = system_upgrade_userbin_check();
 #endif
 
+uint32_t flashInfo;
+
 void handleRoot() {
   // print WiFi diagonistics to Serial
   WiFi.printDiag(Serial);
 
-  // get flash info; size, mode, and speed
-  uint32_t flashInfo;
-  ESP.flashRead(0, &flashInfo, 4);
-
+  // parse flash settings
   const char * FlashSize = "";
   switch((flashInfo >> 28) & 0xF){
     case 0x0:  FlashSize = "512K";  break;
@@ -175,6 +174,10 @@ void setup()
   Serial.begin(74880);
   Serial.println();
   Serial.println(VERSION);
+
+  // get flash info; size, mode, and speed
+  ESP.flashRead(0, &flashInfo, 4);
+
   connectToWiFiBlocking();
   setup_webserver();
 }
@@ -251,10 +254,7 @@ int downloadRomToFlash(const uint32_t start_address, const String &url, bool pre
 
   if(preserve_flash_settings){
     // preserve existing flash settings by overwriting bytes [2,3) in the new rom
-    // get flash info; size, mode, and speed
-    uint32_t flashInfo;
     uint8_t * flashBytes = (uint8_t *) &flashInfo;
-    ESP.flashRead(0, &flashInfo, 4);
     Serial.printf("Have %02X%02X, got %02X%02X\n", flashBytes[2], flashBytes[3], bootrom[2], bootrom[3]);
     // flash mode
     bootrom[2] = flashBytes[2];
