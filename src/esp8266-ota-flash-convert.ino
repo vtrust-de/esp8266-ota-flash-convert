@@ -108,7 +108,7 @@ void handleRoot() {
     "FlashMode: %s %s @ %sMHz" "\n"            // 19
     "FlashChipId: %x" "\n"                     // 14
     "FlashChipRealSize: %dK" "\n"              // 21
-    "Active Userspace: user%s000" "\n",        // 26
+    "Active Userspace: user%s1000" "\n",       // 27
     WiFi.localIP().toString().c_str(),         // max 15
     ESP.getChipId(),                           // 6
     WiFi.macAddress().c_str(),                 // 17
@@ -117,7 +117,7 @@ void handleRoot() {
     FlashSize, FlashMode, FlashSpeed,          // max 10
     ESP.getFlashChipId(),                      // 6
     ESP.getFlashChipRealSize() / 1024,         // max 4
-    userspace ? "2 0x81" : "1 0x01");          // 6
+    userspace ? "2 0x8" : "1 0x0");            // 5
 
   server.send(200, "text/plain", buffer);
 }
