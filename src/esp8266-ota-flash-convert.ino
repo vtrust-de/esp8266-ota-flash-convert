@@ -1,16 +1,20 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
+
+#ifndef USER2
+#include <eboot_command.h>
+#include "eboot_bin.h"
+#endif
+
 extern "C" uint8_t system_upgrade_userbin_check();
 extern "C" void system_upgrade_flag_set(uint8 flag);
 extern "C" void system_upgrade_reboot (void);
 
-#define MAGIC_V1 0xE9
-#define MAGIC_V2 0xEA
 #define UPGRADE_FLAG_START 0x01
 #define UPGRADE_FLAG_FINISH 0x02
-#define SECTOR_SIZE 4096
-#define BUFFER_SIZE SECTOR_SIZE
+#define SECTOR_SIZE 0x1000
+#define MAX_FILE_SIZE 0x80000
 #define SPI_FLASH_ADDR 0x40200000
 
 #define FLASH_SUCCESS 0
@@ -18,8 +22,26 @@ extern "C" void system_upgrade_reboot (void);
 #define FLASH_FAIL_TOO_SMALL 2
 #define FLASH_FAIL_TOO_BIG 3
 #define FLASH_FAIL_WRONG_MAGIC 4
+#define FLASH_FAIL_BAD_ERASE 5
+#define FLASH_FAIL_BAD_WRITE 6
+#define FLASH_FAIL_BOOTROM_ERASE 7
+#define FLASH_FAIL_BOOTROM_WRITE 8
+#define FLASH_FAIL_CONFIG_ERASE 9
 
-#define VERSION "VTRUST-FLASH 1.3\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
+const char * FLASH_ERROR_CODES[] = {
+  "success",
+  "bad URI",
+  "too small",
+  "too big",
+  "wrong magic",
+  "erase failed",
+  "write failed",
+  "bootrom erase failed (very bad)",
+  "bootrom write failed (very, very bad)",
+  "config erase failed"
+};
+
+#define VERSION "VTRUST-FLASH 1.5\n(c) VTRUST GMBH https://www.vtrust.de/35c3/"
 #define WIFI_SSID "vtrust-flash"
 #define WIFI_APSSID "vtrust-recovery"
 
@@ -27,25 +49,32 @@ IPAddress ip(10, 42, 42, 42);
 IPAddress gateway(10, 42, 42, 42);   
 IPAddress subnet(255,255,255,0);   
 
-#define URL_ROM_2 "http://10.42.42.1/files/user2.bin"
-#define URL_ROM_3 "http://10.42.42.1/files/thirdparty.bin"
+#define ROM_URL "http://10.42.42.1/files/thirdparty.bin"
 
 ESP8266WebServer server(80);
 HTTPClient client;
 
-char buffer[BUFFER_SIZE] __attribute__((aligned(4))) = {0};
+char buffer[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 char bootrom[SECTOR_SIZE] __attribute__((aligned(4))) = {0};
 
-uint8_t userspace = system_upgrade_userbin_check();
+#ifdef USER1
+#warning userspace defined as 0
+const uint8_t userspace = 0;
+#elif USER2
+#warning userspace defined as 1
+const uint8_t userspace = 1;
+#else
+#warning userspace defined at runtime
+const uint8_t userspace = system_upgrade_userbin_check();
+#endif
+
+uint32_t flashInfo;
 
 void handleRoot() {
   // print WiFi diagonistics to Serial
   WiFi.printDiag(Serial);
 
-  // get flash info; size, mode, and speed
-  uint32_t flashInfo;
-  ESP.flashRead(0, (uint32_t *)&flashInfo, 4);
-
+  // parse flash settings
   const char * FlashSize = "";
   switch((flashInfo >> 28) & 0xF){
     case 0x0:  FlashSize = "512K";  break;
@@ -83,7 +112,7 @@ void handleRoot() {
     "FlashMode: %s %s @ %sMHz" "\n"            // 19
     "FlashChipId: %x" "\n"                     // 14
     "FlashChipRealSize: %dK" "\n"              // 21
-    "Active Userspace: user%s000" "\n",        // 26
+    "Active Userspace: user%s1000" "\n",       // 27
     WiFi.localIP().toString().c_str(),         // max 15
     ESP.getChipId(),                           // 6
     WiFi.macAddress().c_str(),                 // 17
@@ -92,47 +121,32 @@ void handleRoot() {
     FlashSize, FlashMode, FlashSpeed,          // max 10
     ESP.getFlashChipId(),                      // 6
     ESP.getFlashChipRealSize() / 1024,         // max 4
-    userspace ? "2 0x81" : "1 0x01");          // 6
+    userspace ? "2 0x8" : "1 0x0");            // 5
 
   server.send(200, "text/plain", buffer);
 }
 
-void handleFlash2(){
-  if (userspace)
-  {
-    server.send(200, "text/plain", "Device is already booting from userspace 2 (0x81000)\n");
-    return;
-  }
-  else
-  {
-    const char * url = URL_ROM_2;
-    String customUrl;
-    if (server.hasArg("url")) {
-      customUrl = server.arg("url");
-      url = customUrl.c_str();
-    }
+void handleFlash(){
+  uint32_t flash_time = millis();
+  String url = server.hasArg("url") ? server.arg("url") : ROM_URL;
+  // we can't flash over the currently running program
+  // determine where to place the new rom based on which userspace we're in
+  int result = downloadRomToFlash(userspace ? 0x00000 : 0x80000 - 0x5000, url, !server.hasArg("override"));
+  // clean up the HTTPClient after use, regardless of result
+  client.end();
+  flash_time = millis() - flash_time;
 
-    uint32_t flash_time = millis();
-    int result = downloadRomToFlash(
-      false,            //Bootloader is not being updated
-      0xEA,             //V2 Espressif Magic
-      0x081000,         //Not replacing bootloader
-      0x100000,         //Stop before end of ram
-      128,              //From middle of flash
-      256,              //End of flash
-      url               //URL
-    );
-    flash_time = millis() - flash_time;
+  if (result) {
+    if (result > FLASH_FAIL_CONFIG_ERASE || result < 0)
+      sprintf(buffer, "Flashing %s failed after %dms, HTTP %d\n", url.c_str(), flash_time, result);
+    else
+      sprintf(buffer, "Flashing %s failed after %dms, %s\n", url.c_str(), flash_time, FLASH_ERROR_CODES[result]);
+    server.send(200, "text/plain", buffer);
+  } else {
+    sprintf(buffer, "Flashed %s successfully in %dms, rebooting...\n", url.c_str(), flash_time);
+    server.send(200, "text/plain", buffer);
 
-    if(result) {
-      sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url, 2 - userspace, flash_time, result);
-      server.send(200, "text/plain", buffer);
-    } else {
-      sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url, 2 - userspace, flash_time);
-      server.send(200, "text/plain", buffer);
-
-      system_upgrade_reboot();
-    }
+    ESP.restart();
   }
 }
 
@@ -144,46 +158,6 @@ void handleUndo(){
   system_upgrade_reboot();
 }
 
-void handleFlash3(){
-  if (userspace)
-  {
-    const char * url = URL_ROM_3;
-    String customUrl;
-    if (server.hasArg("url")) {
-      customUrl = server.arg("url");
-      url = customUrl.c_str();
-    }
-
-    uint32_t flash_time = millis();
-    int result = downloadRomToFlash(
-      true,             //Bootloader is being updated
-      0xE9,             //Standard Arduino Magic
-      0x00000,          //Write to 0x0 since we are replacing the bootloader
-      0x80000,          //Stop before 0x80000
-      1,                //Erase Sector from 1 to
-      128,              //Sector 128 (not inclusive)
-      url               //URL
-    );
-    flash_time = millis() - flash_time;
-
-    if(result) {
-      sprintf(buffer, "Flashing %s to userspace %d failed after %dms, error code %d\n", url, 2 - userspace, flash_time, result);
-      server.send(200, "text/plain", buffer);
-    } else {
-      sprintf(buffer, "Flashed %s to userspace %d successfully in %dms, rebooting...\n", url, 2 - userspace, flash_time);
-      server.send(200, "text/plain", buffer);
-
-      system_upgrade_reboot();
-    }
-  }
-  else
-  {
-    server.send(200, "text/plain", "Device is booting from userspace 1 (0x01000) Please flash it to boot from userspace 2 first!\n");
-    return;
-  }
-}
-
-
 void handleRead(){
   sprintf(buffer, "attachment; filename=\"firmware-%x.bin\"", ESP.getChipId());
   server.sendHeader("Content-Disposition", buffer);
@@ -192,8 +166,7 @@ void handleRead(){
 
 void setup_webserver(void){
   server.on("/", handleRoot);
-  server.on("/flash2", handleFlash2);
-  server.on("/flash3", handleFlash3);
+  server.on("/flash", handleFlash);
   server.on("/undo", handleUndo);
   server.on("/backup", handleRead);
   server.begin();
@@ -206,6 +179,10 @@ void setup()
   Serial.begin(74880);
   Serial.println();
   Serial.println(VERSION);
+
+  // get flash info; size, mode, and speed
+  ESP.flashRead(0, &flashInfo, 4);
+
   connectToWiFiBlocking();
   setup_webserver();
 }
@@ -248,106 +225,126 @@ void connectToWiFiBlocking()
 }
 
 //Assumes bootloader must be in first SECTOR_SIZE bytes.
-int downloadRomToFlash(bool bootloader, char magic, uint32_t start_address, uint32_t end_address, uint16_t erase_start, uint16_t erase_end, const char * url)
-{
-  system_upgrade_flag_set(UPGRADE_FLAG_START);
-
+int downloadRomToFlash(const uint32_t start_address, const String &url, bool preserve_flash_settings){
   if(!client.begin(url))
-  {
     return FLASH_FAIL_BAD_URI;
-  }
 
   //Response Code Check
   int httpCode = client.GET();
-  Serial.printf("HTTP response Code: %d\n", httpCode);
   if(httpCode != HTTP_CODE_OK)
-  {
-    Serial.println("Invalid response Code");
     return httpCode;
-  }
 
   //Length Check (at least one sector)
-  int len = client.getSize();
-  Serial.printf("HTTP response length: %d\n", len);
-  if(len < SECTOR_SIZE)
-  {
-    Serial.println("Length too short");
+  int fileSize = client.getSize();
+  if(fileSize < SECTOR_SIZE)
     return FLASH_FAIL_TOO_SMALL;
-  }
 
-  if(len > (end_address-start_address))
-  {
-    Serial.println("Length exceeds flash size");
+  if(fileSize > MAX_FILE_SIZE)
     return FLASH_FAIL_TOO_BIG;
-  }
 
   //Confirm magic byte
   WiFiClient* stream = client.getStreamPtr();
-  char header;
-  stream->peekBytes(&header, 1);
-  Serial.printf("Magic byte from stream: 0x%02X\n", header);
-  if(header != magic)
-  {
-    Serial.println("Invalid magic byte");
+  uint8_t magic;
+  stream->peekBytes(&magic, 1);
+  if(magic != 0xE9)
     return FLASH_FAIL_WRONG_MAGIC;
-  }
 
-  if(bootloader)
-  { 
-    Serial.printf("Downloading %d byte bootloader", sizeof(bootrom));
-    while(stream->available() < sizeof(bootrom))
-    {
-      Serial.print("."); yield(); // reset watchdog
-    }
-    int c = stream->readBytes(bootrom, sizeof(bootrom));
-    start_address += c; // increment next write address
-    len -= c; // decrement remaining bytes
-    Serial.println("Done");
-  }
-
-  Serial.printf("Erasing flash sectors %d-%d", erase_start, erase_end);
-  for (uint16_t i = erase_start; i < erase_end; i++)
+  Serial.printf("Downloading %d byte bootloader", sizeof(bootrom));
+  while(stream->available() < sizeof(bootrom))
   {
-    ESP.flashEraseSector(i);
     Serial.print("."); yield(); // reset watchdog
-  }  
-  Serial.println("Done");
+  }
+  Serial.println();
+  stream->readBytes(bootrom, sizeof(bootrom));
+
+  if(preserve_flash_settings){
+    // preserve existing flash settings by overwriting bytes [2,3) in the new rom
+    uint8_t * flashBytes = (uint8_t *) &flashInfo;
+    Serial.printf("Have %02X%02X, got %02X%02X\n", flashBytes[2], flashBytes[3], bootrom[2], bootrom[3]);
+    // flash mode
+    bootrom[2] = flashBytes[2];
+    // flash size and speed
+    bootrom[3] = flashBytes[3];
+    // if not installing to the first sector, we're going to use the built in eboot rom
+#ifndef USER2
+    if(start_address){
+      eboot_bin[2] = flashBytes[2];
+      eboot_bin[3] = flashBytes[3];
+    }
+#endif
+  }
+
+#ifndef USER2
+  // we do not want to overwrite the bootrom just yet
+  // only write the first sector if start_address > 0
+  if(start_address){
+    if(!ESP.flashEraseSector(start_address >> 12))
+      return FLASH_FAIL_BAD_ERASE;
+    if(!ESP.flashWrite(start_address, (uint32_t*)bootrom, SECTOR_SIZE))
+      return FLASH_FAIL_BAD_WRITE;
+  }
+#endif
+
+  uint32_t write_address = start_address + SECTOR_SIZE;
+  int remaining = fileSize - SECTOR_SIZE;
   
-  Serial.printf("Downloading rom to 0x%06X-0x%06X in %d byte blocks", start_address, start_address+len, sizeof(buffer));
-  while(len > 0)
+  while(remaining > 0)
   {
     size_t size = stream->available();
-    if(size >= sizeof(buffer) || size == len) 
+    if(size >= sizeof(buffer) || size == remaining) 
     {
       int c = stream->readBytes(buffer, size > sizeof(buffer) ? sizeof(buffer) : size);
-      ESP.flashWrite(start_address, (uint32_t*)buffer, c);
-      start_address += c; // increment next write address
-      len -= c; // decrement remaining bytes
+      if(!ESP.flashEraseSector(write_address >> 12))
+        return FLASH_FAIL_BAD_ERASE;
+      if(!ESP.flashWrite(write_address, (uint32_t*)buffer, c))
+        return FLASH_FAIL_BAD_WRITE;
+
+      write_address += c; // increment next write address
+      remaining -= c; // decrement remaining bytes
     }
     Serial.print("."); yield(); // reset watchdog
   }
-  client.end();
-  Serial.println("Done");
+  Serial.println();
 
-  if(bootloader)
-  {
-    Serial.println("Erasing bootloader sector 0");
-    ESP.flashEraseSector(0);
-    Serial.println("Done");
-    
-    Serial.printf("Writing bootloader to 0x%06X-0x%06X", 0, SECTOR_SIZE);
-    ESP.flashWrite(0, (uint32_t*)bootrom, SECTOR_SIZE);
-    Serial.println("Done");
-
-    // erase tasmota param area [244-253) and system params [253-256)
-    for (uint16_t i = 244; i < 256; i++)
-    {
-      ESP.flashEraseSector(i);
-      yield(); // reset watchdog
-    }
+  // clearing system param area helps avoid issues in your thirdparty firmware
+  // system params [253,256)
+  // rf data [251,253)
+  // rtos params [247,256)
+  // tasmota settings [244,253)
+  for (uint16_t i = 244; i < 256; i++){
+    if(!ESP.flashEraseSector(i))
+      return FLASH_FAIL_CONFIG_ERASE;
+    yield(); // reset watchdog
   }
 
-  system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
+  // now that we have gotten this far without failure we can write the bootrom
+  // we do this at 0 regardless of start_address
+  Serial.println("Writing bootloader");
+  if(!ESP.flashEraseSector(0))
+    return FLASH_FAIL_BOOTROM_ERASE;
+
+  if(start_address) {
+#ifndef USER2
+    // if the firmware was written anywhere but 0, use the built in arduino eboot
+    if(!ESP.flashWrite(0, (uint32_t*) eboot_bin, eboot_bin_len))
+      return FLASH_FAIL_BOOTROM_WRITE;
+
+    // command the eboot to copy the firmware to the correct place on next boot
+    eboot_command ebcmd;
+    ebcmd.action = ACTION_COPY_RAW;
+    ebcmd.args[0] = start_address;
+    ebcmd.args[1] = 0x00000;
+    ebcmd.args[2] = fileSize;
+    eboot_command_write(&ebcmd);
+#endif
+  } else {
+#ifndef USER1
+    // install the uploaded bootrom
+    if(!ESP.flashWrite(0, (uint32_t*) bootrom, SECTOR_SIZE))
+      return FLASH_FAIL_BOOTROM_WRITE;
+#endif
+  }
+
   return FLASH_SUCCESS;
 }
 
